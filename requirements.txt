@@ -1,3 +1,7 @@
 dill
 ncls
 orjson
+tensorboardX
+matplotlib
+pyyaml
+easydict
