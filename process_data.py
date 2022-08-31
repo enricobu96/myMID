@@ -32,7 +32,8 @@ standardization = {
 }
 
 def maybe_makedirs(path_to_create):
-    """This function will create a directory, unless it exists already,
+    """
+    This function will create a directory, unless it exists already,
     at which point the function will return.
     The exception handling is necessary as it prevents a race condition
     from occurring.
@@ -46,6 +47,9 @@ def maybe_makedirs(path_to_create):
             raise
 
 def augment_scene(scene, angle):
+    """
+    Data augmentation function for scene (rotation). Returns Scene object with augmented data.
+    """
     def rotate_pc(pc, alpha):
         M = np.array([[np.cos(alpha), -np.sin(alpha)],
                       [np.sin(alpha), np.cos(alpha)]])
@@ -84,6 +88,9 @@ def augment_scene(scene, angle):
 
 
 def augment(scene):
+    """
+    Executes data augmentation.
+    """
     scene_aug = np.random.choice(scene.augmented)
     scene_aug.temporal_scene_graph = scene.temporal_scene_graph
     return scene_aug

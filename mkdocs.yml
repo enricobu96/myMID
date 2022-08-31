@@ -1,0 +1,8 @@
+site_name: "Mymid"
+repo_url: "https://github.com/enricobu96/myMID"
+site_dir: "site"
+docs_dir: "docs"
+
+theme:
+  name: readthedocs
+  include_sidebar: true

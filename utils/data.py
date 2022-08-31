@@ -3,6 +3,9 @@ from torch.utils.data import DataLoader, random_split
 
 
 def get_train_val_test_datasets(dataset, train_ratio, val_ratio):
+    """
+    Takes in input dataset and train-validation ratio, returns a tuple of datasets: training, validation and test.
+    """
     assert (train_ratio + val_ratio) <= 1
     train_size = int(len(dataset) * train_ratio)
     val_size = int(len(dataset) * val_ratio)
@@ -13,6 +16,9 @@ def get_train_val_test_datasets(dataset, train_ratio, val_ratio):
 
 
 def get_train_val_test_loaders(dataset, train_ratio, val_ratio, train_batch_size, val_test_batch_size, num_workers):
+    """
+    
+    """
     train_set, val_set, test_set = get_train_val_test_datasets(dataset, train_ratio, val_ratio)
 
     train_loader = DataLoader(train_set, train_batch_size, shuffle=True, num_workers=num_workers)
