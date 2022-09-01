@@ -5,6 +5,46 @@ from .node import MultiNode
 
 
 class Scene(object):
+    """
+    Class description.
+
+    Params
+    ------
+    timesteps : 
+    map : 
+    dt : 
+    name : 
+    frequency_multiplier : 
+    aug_func :
+    non_aug_scene : 
+
+    Attributes
+    ----------
+    map : 
+    timesteps : 
+    dt : 
+    name : 
+    robot : 
+    temporal_scene_graph : 
+    frequency_multiplier : 
+    description : 
+    aug_func : 
+    non_aug_scene : 
+
+    Methods
+    -------
+    add_robot_from_nodes(robot_type) -> 
+    get_clipped_pos_dict(timestep, state) -> 
+    get_scene_graph(timestep, attention_radius=None, edge_addition_filter=None, edge_removal_filter=None) -> SceneGraph:
+    calculate_scene_graph(attention_radius,edge_addition_filter=None, edge_removal_filter=None) -> None:
+    duration() -> 
+    present_nodes(timesteps, type=None, min_history_timesteps=0, min_future_timesteps=0, return_robot=True) -> dict:
+    get_nodes_clipped_at_time(timesteps, state) -> 
+    sample_timesteps(batch_size, min_future_timesteps=0) -> np.ndarray:
+    augment() -> 
+    get_node_by_id(id) -> 
+
+    """
     def __init__(self, timesteps, map=None, dt=1, name="", frequency_multiplier=1, aug_func=None,  non_aug_scene=None):
         self.map = map
         self.timesteps = timesteps

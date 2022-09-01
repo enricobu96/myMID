@@ -7,6 +7,9 @@ import pickle
 
 from environment import Environment, Scene, Node, derivative_of
 
+# For debug reasons
+from pprint import pprint
+
 desired_max_time = 100
 pred_indices = [2, 3]
 state_dim = 6
@@ -102,11 +105,14 @@ l = 0
 data_folder_name = 'processed_data_noise'
 
 maybe_makedirs(data_folder_name)
-data_columns = pd.MultiIndex.from_product([['position', 'velocity', 'acceleration'], ['x', 'y']])
 
-# Process ETH-UCY
+"""
+Process data for ETH-UCY dataset.
+"""
+data_columns = pd.MultiIndex.from_product([['position', 'velocity', 'acceleration'], ['x', 'y']])
 for desired_source in ['eth', 'hotel', 'univ', 'zara1', 'zara2']:
     for data_class in ['train', 'val', 'test']:
+        # Creates Environment object. See documentation for Environment class.
         env = Environment(node_type_list=['PEDESTRIAN'], standardization=standardization)
         attention_radius = dict()
         attention_radius[(env.NodeType.PEDESTRIAN, env.NodeType.PEDESTRIAN)] = 3.0
@@ -118,6 +124,7 @@ for desired_source in ['eth', 'hotel', 'univ', 'zara1', 'zara2']:
         for subdir, dirs, files in os.walk(os.path.join('raw_data', desired_source, data_class)):
             for file in files:
                 if file.endswith('.txt'):
+                    # Reads input txt file and loads it into dataframe
                     input_data_dict = dict()
                     full_data_path = os.path.join(subdir, file)
                     print('At', full_data_path)
@@ -136,6 +143,8 @@ for desired_source in ['eth', 'hotel', 'univ', 'zara1', 'zara2']:
 
                     data.sort_values('frame_id', inplace=True)
 
+                    # Standardizes positions for ADE and FDE evaluation, which are then divided by 0.6
+                    # TODO: check if legit
                     if desired_source == "eth" and data_class == "test":
                         data['pos_x'] = data['pos_x'] * 0.6
                         data['pos_y'] = data['pos_y'] * 0.6
@@ -147,6 +156,7 @@ for desired_source in ['eth', 'hotel', 'univ', 'zara1', 'zara2']:
 
                         #data = pd.concat([data, data_gauss])
 
+                    # TODO: check if legit
                     data['pos_x'] = data['pos_x'] - data['pos_x'].mean()
                     data['pos_y'] = data['pos_y'] - data['pos_y'].mean()
 
