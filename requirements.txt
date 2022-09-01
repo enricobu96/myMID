@@ -1,3 +1,4 @@
+pandas
 dill
 ncls
 orjson
@@ -5,3 +6,5 @@ tensorboardX
 matplotlib
 pyyaml
 easydict
+scipy
+tqdm

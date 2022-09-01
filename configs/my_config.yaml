@@ -1,6 +1,6 @@
 ############ MID Config #############
 # optimizer
-lr: 0.001
+lr: 0.0001
 # dataset
 data_dir: processed_data_noise
   # the path with the directory with XXX.pkl
@@ -40,5 +40,5 @@ scene_freq_mult_eval: False
 scene_freq_mult_viz: False
 no_edge_encoding: False
 # Data Parameters:
-device: cpu
+device: cuda
 eval_device: None
