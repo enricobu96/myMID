@@ -1,3 +1,10 @@
+"""
+process_data.py
+This part of the program basically just processes data putting it into a convenient shape for further operations.
+No real logic is applied here, since also the noising part of the diffusion model (the forward process) should be
+performed in the second part of the program.
+"""
+
 import sys
 import os
 import numpy as np
@@ -84,6 +91,7 @@ def augment_scene(scene, angle):
 
         node_data = pd.DataFrame(data_dict, columns=data_columns)
 
+        # Create node and add it to the scene
         node = Node(node_type=node.type, node_id=node.id, data=node_data, first_timestep=node.first_timestep)
 
         scene_aug.nodes.append(node)
@@ -143,8 +151,7 @@ for desired_source in ['eth', 'hotel', 'univ', 'zara1', 'zara2']:
 
                     data.sort_values('frame_id', inplace=True)
 
-                    # Standardizes positions for ADE and FDE evaluation, which are then divided by 0.6
-                    # TODO: check if legit
+                    # Standardizes positions for ADE and FDE evaluation, which are then multiplied by 0.6
                     if desired_source == "eth" and data_class == "test":
                         data['pos_x'] = data['pos_x'] * 0.6
                         data['pos_y'] = data['pos_y'] * 0.6
@@ -156,14 +163,15 @@ for desired_source in ['eth', 'hotel', 'univ', 'zara1', 'zara2']:
 
                         #data = pd.concat([data, data_gauss])
 
-                    # TODO: check if legit
                     data['pos_x'] = data['pos_x'] - data['pos_x'].mean()
                     data['pos_y'] = data['pos_y'] - data['pos_y'].mean()
 
                     max_timesteps = data['frame_id'].max()
 
+                    # Creates the scene
                     scene = Scene(timesteps=max_timesteps+1, dt=dt, name=desired_source + "_" + data_class, aug_func=augment if data_class == 'train' else None)
 
+                    # For each node
                     for node_id in pd.unique(data['node_id']):
 
                         node_df = data[data['node_id'] == node_id]
@@ -175,6 +183,7 @@ for desired_source in ['eth', 'hotel', 'univ', 'zara1', 'zara2']:
 
                         new_first_idx = node_df['frame_id'].iloc[0]
 
+                        # Get x,y positions and compute velocity and acceleration derivating them from space
                         x = node_values[:, 0]
                         y = node_values[:, 1]
                         vx = derivative_of(x, scene.dt)

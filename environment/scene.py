@@ -6,43 +6,70 @@ from .node import MultiNode
 
 class Scene(object):
     """
-    Class description.
+    Scene class, represents a scene with its params.
 
     Params
     ------
-    timesteps : 
-    map : 
-    dt : 
-    name : 
-    frequency_multiplier : 
-    aug_func :
-    non_aug_scene : 
+    timesteps : int
+        number of timesteps
+    map : object (None)
+        map for visualization purposes
+    dt : float
+        hyperparameter, dt of the time for derivation of space (in order to get velocity and acceleration)
+    name : str
+        name of the dataset
+    frequency_multiplier : int
+        multiplier for the frequency when operating in node_freq_mult
+    aug_func : function
+        augmentation function
+    non_aug_scene : Scene
+        non-augmented scene
 
     Attributes
     ----------
-    map : 
-    timesteps : 
-    dt : 
-    name : 
-    robot : 
-    temporal_scene_graph : 
-    frequency_multiplier : 
-    description : 
-    aug_func : 
-    non_aug_scene : 
+    map : object (None)
+        map for visualization purposes
+    timesteps : int
+        number of timesteps
+    dt : float
+        hyperparameter, dt of the time for derivation of space (in order to get velocity and acceleration)
+    name : str
+        name of the dataset
+    robot : Node
+        robot node when operating with it
+    temporal_scene_graph : SceneGraph
+        see SceneGraph documentation
+    frequency_multiplier : int
+        multiplier for the frequency when operating in node_freq_mult
+    description : str
+        description of the dataset
+    aug_func : function
+        augmentation function
+    non_aug_scene : Scene
+        non-augmented scene
 
     Methods
     -------
-    add_robot_from_nodes(robot_type) -> 
-    get_clipped_pos_dict(timestep, state) -> 
-    get_scene_graph(timestep, attention_radius=None, edge_addition_filter=None, edge_removal_filter=None) -> SceneGraph:
-    calculate_scene_graph(attention_radius,edge_addition_filter=None, edge_removal_filter=None) -> None:
-    duration() -> 
-    present_nodes(timesteps, type=None, min_history_timesteps=0, min_future_timesteps=0, return_robot=True) -> dict:
-    get_nodes_clipped_at_time(timesteps, state) -> 
-    sample_timesteps(batch_size, min_future_timesteps=0) -> np.ndarray:
-    augment() -> 
-    get_node_by_id(id) -> 
+    add_robot_from_nodes(robot_type) -> None
+        appends robot node to nodes when operating with robot node
+    get_clipped_pos_dict(timestep, state) -> dict()
+        returns nodes clipped at time
+    get_scene_graph(timestep, attention_radius=None, edge_addition_filter=None, edge_removal_filter=None) -> SceneGraph
+        returns the Scene Graph for a given timestep. Read documentation of the method
+    calculate_scene_graph(attention_radius,edge_addition_filter=None, edge_removal_filter=None) -> None
+        calculate the Temporal Scene Graph for the entire Scene. Read documentation fo the method
+    duration() -> int
+        returns the duration of the scene
+    present_nodes(timesteps, type=None, min_history_timesteps=0, min_future_timesteps=0, return_robot=True) -> dict
+        finds all present nodes in the scene at a given timestemp
+    get_nodes_clipped_at_time(timesteps, state) -> list(Nodes)
+        clips nodes at time
+    sample_timesteps(batch_size, min_future_timesteps=0) -> np.ndarray
+        sample a batch size of possible timesteps for the scene
+    augment() -> self
+        performs augmentation
+    get_node_by_id(id) -> Node
+        returns node by id
 
     """
     def __init__(self, timesteps, map=None, dt=1, name="", frequency_multiplier=1, aug_func=None,  non_aug_scene=None):
