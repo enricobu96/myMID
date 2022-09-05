@@ -7,6 +7,45 @@ from .trajectory_utils import prediction_output_to_trajectories
 from matplotlib import pyplot as plt
 import pdb
 
+"""
+File with utilities for evaluation. This file also comes with Trajectron++ code (https://github.com/StanfordASL/Trajectron-plus-plus/),
+and only a subset of these functions is actually used.
+
+Functions
+---------
+compute_ade(predicted_trajs, gt_traj) -> number
+    computes ade (average displacement error) confronting predicted and ground truth trajs
+compute_fde(predicted_trajs, gt_traj) -> number
+    computes fde (final displacement error) confronting predicted and ground truth trajs
+compute_kde_nll(predicted_trajs, gt_traj) -> number
+    compute kde-based nll (kernel density estimation) confronting predicted and ground truth trajs. Not used in this project
+compute_obs_violations(predicted_trajs, map) -> number
+    compute violations in observed trajectories. Not used in this project
+compute_batch_statistics(prediction_output_dict,
+                             dt,
+                             max_hl,
+                             ph,
+                             node_type_enum,
+                             kde,
+                             obs,
+                             map,
+                             prune_ph_to_future,
+                             best_of) -> dict()
+    computes statistics for the batch (ade, fde)
+print_batch_errors(batch_errors_list, namespace, curr_iter) -> None
+    utility function to print batch errors
+batch_pcmd(prediction_output_dict,
+               dt,
+               max_hl,
+               ph,
+               node_type_enum,
+               kde,
+               obs,
+               map,
+               prune_ph_to_future,
+               best_of) -> dict()
+    not used in this project
+"""
 
 def compute_ade(predicted_trajs, gt_traj):
     #pdb.set_trace()
