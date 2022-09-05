@@ -21,12 +21,48 @@ from utils.trajectron_hypers import get_traj_hypers
 import evaluation
 
 class MID():
+    """
+    Motion Indeterminacy Diffusion model from MID paper.
+
+    Attributes
+    ----------
+    config : dict()
+        configuration object got from config file
+    
+    Methods - the complete descriptions are reported on the methods
+    -------
+    train() -> None
+        trains the model
+    eval() -> None
+        evaluates the model
+    _build() -> None
+        builds dir, optimizer, encoder, loader, model
+    _build_dir() -> None
+        builds dir
+    _build_optimizer() -> None
+        builds optimizer
+    _build_encoder_config() -> None
+        builds encoder configuration
+    _build_encoder() -> None
+        builds encoder
+    _build_model() -> None
+        builds model
+    _build_train_loader() -> None
+        builds loader for training phase
+    _build_eval_loader() -> None
+        builds loader for evaluation phase
+    _build_offline_scene_graph() -> None
+        builds offline scene graph if that hyperparameter is set to yes
+    """
     def __init__(self, config):
         self.config = config
         torch.backends.cudnn.benchmark = True
         self._build()
 
     def train(self):
+        """
+        Method for model training
+        """
         for epoch in range(1, self.config.epochs + 1):
             self.train_dataset.augment = self.config.augment
             for node_type, data_loader in self.train_data_loader.items():
@@ -178,6 +214,9 @@ class MID():
 
 
     def _build(self):
+        """
+        Builds everything (general control function).
+        """
         self._build_dir()
 
         self._build_encoder_config()
@@ -193,6 +232,9 @@ class MID():
         print("> Everything built. Have fun :)")
 
     def _build_dir(self):
+        """
+        Builds experiments directory (contains then log and model binary files)
+        """
         self.model_dir = osp.join("./experiments",self.config.exp_name)
         self.log_writer = SummaryWriter(log_dir=self.model_dir)
         os.makedirs(self.model_dir,exist_ok=True)
@@ -218,6 +260,12 @@ class MID():
         print("> Directory built!")
 
     def _build_optimizer(self):
+        """
+        Builds optimizer, which is Adam as reported in the paper.
+        Sets scheduler as ExponentialLR (from torch documentation:
+        decays the learning rate of each parameter group by gamma
+        every epoch).
+        """
         self.optimizer = optim.Adam([{'params': self.registrar.get_all_but_name_match('map_encoder').parameters()},
                                      {'params': self.model.parameters()}
                                     ],
@@ -226,14 +274,19 @@ class MID():
         print("> Optimizer built!")
 
     def _build_encoder_config(self):
-
+        """
+        Builds configuration for encoder:
+        - Sets hyperparameters
+        - Builds registrar (see documentation, but nothing crucial)
+        - Opens environments
+        """
         self.hyperparams = get_traj_hypers()
         self.hyperparams['enc_rnn_dim_edge'] = self.config.encoder_dim//2
         self.hyperparams['enc_rnn_dim_edge_influence'] = self.config.encoder_dim//2
         self.hyperparams['enc_rnn_dim_history'] = self.config.encoder_dim//2
         self.hyperparams['enc_rnn_dim_future'] = self.config.encoder_dim//2
         # registar
-        self.registrar = ModelRegistrar(self.model_dir, "cuda")
+        self.registrar = ModelRegistrar(self.model_dir, "cpu")
 
         if self.config.eval_mode:
             epoch = self.config.eval_at
@@ -249,24 +302,37 @@ class MID():
             self.eval_env = dill.load(f, encoding='latin1')
 
     def _build_encoder(self):
-        self.encoder = Trajectron(self.registrar, self.hyperparams, "cuda")
+        """
+        Builds encoder and sets environment. Encoder is the trajectron, strongly recommended
+        to read documentation for it.
+        """
+        self.encoder = Trajectron(self.registrar, self.hyperparams, "cpu")
 
         self.encoder.set_environment(self.train_env)
         self.encoder.set_annealing_params()
 
 
     def _build_model(self):
-        """ Define Model """
+        """
+        Builds model and redirect it to device (cuda/cpu). Model is an autoencoder (see documentation) with Trajectron as encoder.
+        """
         config = self.config
         model = AutoEncoder(config, encoder = self.encoder)
 
-        self.model = model.cuda()
+        self.model = model.to('cpu')
         if self.config.eval_mode:
             self.model.load_state_dict(self.checkpoint['ddpm'])
 
         print("> Model built!")
 
     def _build_train_loader(self):
+        """
+        Builds loader for training:
+        - Sets attention radius and node types
+        - Sets scenes
+        - Sets training dataset (EnvironmentDataset, see documentation but not crucial)
+        - Sets dataloaders
+        """
         config = self.config
         self.train_scenes = []
 
@@ -302,6 +368,9 @@ class MID():
 
 
     def _build_eval_loader(self):
+        """
+        Builds loader for evaluation. Same functioning of _build_train_loader().
+        """
         config = self.config
         self.eval_scenes = []
         eval_scenes_sample_probs = None
@@ -343,6 +412,9 @@ class MID():
         print("> Dataset built!")
 
     def _build_offline_scene_graph(self):
+        """
+        Builds scene graphs for offline calculating. Not used in the paper model.
+        """
         if self.hyperparams['offline_scene_graph'] == 'yes':
             print(f"Offline calculating scene graphs")
             for i, scene in enumerate(self.train_scenes):
