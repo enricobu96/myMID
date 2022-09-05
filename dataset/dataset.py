@@ -4,6 +4,10 @@ from .preprocessing import get_node_timestep_data
 
 
 class EnvironmentDataset(object):
+    """
+    Environment dataset class. It just creates the dataset for training and evaluation
+    in a proper way (sets hyperparameters, performs augmentation). Nothing crucial.
+    """
     def __init__(self, env, state, pred_state, node_freq_mult, scene_freq_mult, hyperparams, **kwargs):
         self.env = env
         self.state = state
@@ -34,6 +38,9 @@ class EnvironmentDataset(object):
 
 
 class NodeTypeDataset(data.Dataset):
+    """
+    Utility class for creating a NodeType dataset. Creates index and stuff, not crucial.
+    """
     def __init__(self, env, node_type, state, pred_state, node_freq_mult,
                  scene_freq_mult, hyperparams, augment=False, **kwargs):
         self.env = env
