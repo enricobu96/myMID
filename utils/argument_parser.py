@@ -1,5 +1,9 @@
 import argparse
 
+"""
+Just utilities for parse arguments.
+"""
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--conf",
                     help="path to json config file for hyperparameters",

@@ -7,7 +7,6 @@ import numpy as np
 import h5py
 from tqdm.auto import tqdm
 
-
 synsetid_to_cate = {
     '02691156': 'airplane', '02773838': 'bag', '02801938': 'basket',
     '02808440': 'bathtub', '02818832': 'bed', '02828884': 'bench',
@@ -35,7 +34,9 @@ cate_to_synsetid = {v: k for k, v in synsetid_to_cate.items()}
 
 
 class ShapeNetCore(Dataset):
-
+    """
+    Unknown class not used anywhere in the project.
+    """
     GRAVITATIONAL_AXIS = 1
     
     def __init__(self, path, cates, split, scale_mode, transform=None):
