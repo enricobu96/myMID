@@ -22,7 +22,27 @@ import evaluation
 
 class MID():
     """
-    Motion Indeterminacy Diffusion model from MID paper.
+    Motion Indeterminacy Diffusion model from MID paper. The pipeline (when training)
+    is the following:
+    1. The object MID is created (by main.py)
+    2. At instantiation, the following components are built:
+        2.1. The encoder, i.e. a Trajectron object is instantiated [trajectron.py]
+        2.2. The model, i.e. an Autoencoder object is instantiated with the previously
+             instantiated Trajectron object as encoder [autoencoder.py]
+        2.3. The loaders and the optimizer
+    3. For each epoch, training is performed:
+        3.1. Standard zero_grad
+        3.2. get_loss, but this time it's a custom one in AutoEncoder object [autoencoder.py]
+        3.3. Standard backprop and optimizer step
+    4. Every now and then (specified in the config file) also evaluation with validation set
+
+    Now, the important part is 2.1 and 2.2: this is the model, so start from those
+    files and follow documentation to the other important files.
+    
+    The order is (files): (trajectron (mgcvae)) (autoencoder (diffusion (transformer)))
+    Note: trajectron and mgcvae are not crucial, since MID is encoder-agnostic and trajectron
+    is used just because of its representative power; however, trajectron should be fixed to 
+    address the issue reported on github.
 
     Attributes
     ----------
@@ -320,9 +340,10 @@ class MID():
         model = AutoEncoder(config, encoder = self.encoder)
 
         self.model = model.to('cpu')
+
         if self.config.eval_mode:
             self.model.load_state_dict(self.checkpoint['ddpm'])
-
+        z = self.model.encode(0,0)
         print("> Model built!")
 
     def _build_train_loader(self):
