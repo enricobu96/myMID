@@ -2,6 +2,10 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
+"""
+File containing visualization utilities. This file also comes with Trajectron++ code (https://github.com/StanfordASL/Trajectron-plus-plus/).
+Not used in this project.
+"""
 
 def plot_boxplots(ax, perf_dict_for_pd, x_label, y_label):
     perf_df = pd.DataFrame.from_dict(perf_dict_for_pd)

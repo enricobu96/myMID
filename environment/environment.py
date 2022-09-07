@@ -5,6 +5,48 @@ from .node_type import NodeTypeEnum
 
 
 class Environment(object):
+    """
+    Environment class. Contains information on scenes and attention.
+
+    Params
+    ------
+    node_type_list : list(str)
+        list of types of node, e.g. PEDESTRIAN
+    standardization : dict()
+        information on standardization of scenes (mean and std for x and y)
+    scenes : list(Scene)
+        scenes objects of the environment. When firstly initialized, scenes is empty
+    attention_radius : int
+        radius for attention mechanism
+    robot_type : str
+
+    Attributes
+    ----------
+    scenes : list(Scene)
+        list of scenes, each composed by duration in seconds and number of nodes (for better understanding, read doc for Scene class)
+    node_type_list : list(str)
+        list of types of node, e.g. PEDESTRIAN
+    attention_radius : int
+        radius for attention mechanism
+    NodeType : Enum
+        enum istantiated with node_type_list
+    robot_type : str
+    standardization : dict()
+        information on standardization of scenes (mean and std for x and y)
+    standardize_param_memo : dict()
+    _scenes_resample_prop : None
+
+    Methods
+    -------
+    get_edge_types() -> list()
+        TODO
+    get_standardize_params(state, node_type) -> np.stack(), np.stack()
+        returns parameters for standardization
+    standardize(array, state, node_type, mean=None, std=None)
+        returns parameters for standardization for each scene
+    unstandardize(self, array, state, node_type, mean=None, std=None):
+        returns parameters for unstandardization for each scene
+    """
     def __init__(self, node_type_list, standardization, scenes=None, attention_radius=None, robot_type=None):
         self.scenes = scenes
         self.node_type_list = node_type_list

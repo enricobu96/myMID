@@ -6,6 +6,48 @@ from ncls import NCLS
 
 
 class Node(object):
+    """
+    Node class, represents a node in a scene.
+
+    Params
+    ------
+    node_type : str
+        type of node (e.g. pedestrian)
+    node_id : int
+        id of the node
+    data : DoubleHeaderNumpyArray
+        array containing spatial data about node
+    length : number
+        lenght of the node (unavailable for eth)
+    width : number
+        width of the node (unavailable for eth)
+    height : number
+        height of the node (unavailable for eth)
+    first_timestep : int
+        first timestep in which it appears
+    is_robot : bool
+        available in robot root mode
+    description : str
+        description of the node
+    frequency_multiplier : int
+        multiplier for the frequency when operating in node_freq_mult
+    non_aug_node : Node
+        non-augmented node
+    last_timestep : int
+        last timestep in which it appears
+    forwarded_in_time_on_next_override : bool
+
+    Methods
+    -------
+    overwrite_data(data, forwared_in_time_on_next_override) -> None
+        read documentation of the method
+    scene_ts_to_node_ts(scene_ts) -> (np.ndarray, int, int)
+        read documentation of the method
+    history_points_at(self, ts) -> int
+        read documentation of the method
+    get(self, tr_scene, state, padding=np.nan) -> np.ndarray
+        read documentation of the method
+    """
     def __init__(self, node_type, node_id, data, length=None, width=None, height=None, first_timestep=0,
                  is_robot=False, description="", frequency_multiplier=1, non_aug_node=None):
         self.type = node_type
@@ -124,6 +166,9 @@ class Node(object):
 
 
 class MultiNode(Node):
+    """
+    Equivalent to Node class but with a list of nodes instead of single nodes.
+    """
     def __init__(self, node_type, node_id, nodes_list, is_robot=False):
         super(MultiNode, self).__init__(node_type, node_id, data=None, is_robot=is_robot)
         self.nodes_list = nodes_list

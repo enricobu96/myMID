@@ -7,7 +7,40 @@ from .common import *
 import pdb
 
 class VarianceSchedule(Module):
+    """
+    Class representing the variance schedule.
 
+    Attributes
+    ----------
+    num_steps : int
+        number of steps in the variance schedule
+    mode : str
+        type of variance schedule: linear or cosine
+    beta : number
+        hyperparameter beta
+    beta_T : number
+        hyperparameter betaT
+    cosine_s : number
+        hyperparameter s for cosine variance schedule
+
+    Methods
+    -------
+    uniform_sample_t(batch_size) -> list()
+        returns a uniform distribution with range [1;number_of_steps+1]
+    get_sigmas(t, flexibility) -> list()
+        returns sigmas
+
+    Detailed description
+    --------------------
+    When initialized a VarianceSchedule object, the following happens:
+    0. Attributes are initialized
+    1. A schedule is decided and the betas are then generated:
+        1.1. If the schedule is linear, betas are just a linear space between beta1 and betaT.
+        The number of steps is the one given at initialization; betas are in a tensor
+        1.2. If the schedule is cosine, uses formula 17 from Improved DDPM paper (https://arxiv.org/pdf/2102.09672.pdf) to compute betas and (first part) alphas
+    2. Pads the betas in order to match dimensions
+    3. Computes alphas, alpha_logs and sigmas
+    """
     def __init__(self, num_steps, mode='linear',beta_1=1e-4, beta_T=5e-2,cosine_s=8e-3):
         super().__init__()
         assert mode in ('linear', 'cosine')
@@ -146,7 +179,7 @@ class TransformerLinear(Module):
         self.linear = nn.Linear(128, point_dim)
 
     def forward(self, x, beta, context):
-
+        print('helo')
         batch_size = x.size(0)
         beta = beta.view(batch_size, 1, 1)          # (B, 1, 1)
         context = context.view(batch_size, 1, -1)   # (B, 1, F)
@@ -211,12 +244,12 @@ class DiffusionTraj(Module):
             t = self.var_sched.uniform_sample_t(batch_size)
 
         alpha_bar = self.var_sched.alpha_bars[t]
-        beta = self.var_sched.betas[t].cuda()
+        beta = self.var_sched.betas[t].to('cpu')
 
-        c0 = torch.sqrt(alpha_bar).view(-1, 1, 1).cuda()       # (B, 1, 1)
-        c1 = torch.sqrt(1 - alpha_bar).view(-1, 1, 1).cuda()   # (B, 1, 1)
+        c0 = torch.sqrt(alpha_bar).view(-1, 1, 1).to('cpu')     # (B, 1, 1)
+        c1 = torch.sqrt(1 - alpha_bar).view(-1, 1, 1).to('cpu')   # (B, 1, 1)
 
-        e_rand = torch.randn_like(x_0).cuda()  # (B, N, d)
+        e_rand = torch.randn_like(x_0).to('cpu')  # (B, N, d)
 
 
         e_theta = self.net(c0 * x_0 + c1 * e_rand, beta=beta, context=context)

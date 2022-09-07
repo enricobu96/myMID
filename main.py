@@ -2,11 +2,8 @@ from mid import MID
 import argparse
 import os
 import yaml
-# from pprint import pprint
 from easydict import EasyDict
 import numpy as np
-
-
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -17,7 +14,6 @@ def parse_args():
 
 
 def main():
-    # parse arguments and load config
     args = parse_args()
     with open(args.config) as f:
        config = yaml.safe_load(f)

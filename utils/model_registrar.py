@@ -8,6 +8,12 @@ def get_model_device(model):
 
 
 class ModelRegistrar(nn.Module):
+    """
+    Just a utility class for building the model (not crucial for model structure):
+    - Sets the directory and the device
+    - Provide get methods for model
+    - Provide saving and loading utilities
+    """
     def __init__(self, model_dir, device):
         super(ModelRegistrar, self).__init__()
         self.model_dict = nn.ModuleDict()

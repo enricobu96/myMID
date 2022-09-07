@@ -4,6 +4,10 @@ import matplotlib.patheffects as pe
 import numpy as np
 import seaborn as sns
 
+"""
+File containing visualization utilities. This file also comes with Trajectron++ code (https://github.com/StanfordASL/Trajectron-plus-plus/).
+Not used in this project.
+"""
 
 def plot_trajectories(ax,
                       prediction_dict,

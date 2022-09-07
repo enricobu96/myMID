@@ -28,7 +28,9 @@ class RingBuffer(Sequence):
         self._allow_overwrite = allow_overwrite
 
     def _unwrap(self):
-        """ Copy the data from this buffer into unwrapped form """
+        """
+        Copy the data from this buffer into unwrapped form
+        """
         return np.concatenate((
             self._arr[self._left_index:min(self._right_index, self._capacity)],
             self._arr[:max(self._right_index - self._capacity, 0)]
@@ -47,7 +49,9 @@ class RingBuffer(Sequence):
 
     @property
     def is_full(self):
-        """ True if there is no more space in the buffer """
+        """
+        True if there is no more space in the buffer
+        """
         return len(self) == self._capacity
 
     # numpy compatibility

@@ -3,6 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from typing import Tuple, Optional
 
+"""
+File with utility functions for warping (getting different perspective on images)
+"""
 
 pi = torch.tensor(3.14159265358979323846)
 

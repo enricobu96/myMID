@@ -1,3 +1,8 @@
+"""
+IMPORTANT. Utility function to get hyperparameters for the model. Complementary with the config file in configs/
+#TODO: modify these parameters to match with what reported in the paper.
+"""
+
 def get_traj_hypers():
     hypers = {   'batch_size': 256,
     'grad_clip': 1.0, # clips gradient to 1

@@ -5,6 +5,13 @@ from torch.utils.data._utils.collate import default_collate
 import dill
 container_abcs = collections.abc
 
+"""
+File with preprocessing utilities (see method descriptions for more infos). This file comes from
+Trajectron++ code (https://github.com/StanfordASL/Trajectron-plus-plus/).
+# TODO: this code is obsolete; it was found a major bug in derivative_of() function in models/trajectron.py,
+which leads to better (but wrong) results. To fix this. 
+Issue reference: https://github.com/StanfordASL/Trajectron-plus-plus/issues/40#issue-856642520
+"""
 
 def restore(data):
     """

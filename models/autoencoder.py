@@ -8,7 +8,31 @@ from models.diffusion import DiffusionTraj,VarianceSchedule
 import pdb
 
 class AutoEncoder(Module):
+    """
+    Custom AutoEncoder class for the project. In this project, Trajectron++ is used as the temporal-social encoder:
+    it encodes the history path and social interaction clues into a state embedding. Then, the decoder (transformer)
+    is used for the reverse diffusion process.
 
+    Attributes
+    ----------
+    config : dict()
+        configuration infos (retrieved from configuration file)
+    encoder : Trajectron
+        encoder for the model
+    diffnet : TransformerConcatLinear
+        from diffusion.py file, read documentation from there
+    diffusion : DiffusionTraj
+        from diffusion.py, read documentation from there
+
+    Methods
+    -------
+    encode(batch, node_type) -> Tensor
+        performs encoding by getting latent representation
+    generate(batch, node_type, num_points, sample, bestof,flexibility, ret_traj) -> ?
+        generates prediction
+    get_loss(batch, node_type) -> number
+        returns loss using get_loss method from diffusion.py file
+    """
     def __init__(self, config, encoder):
         super().__init__()
         self.config = config
@@ -46,5 +70,5 @@ class AutoEncoder(Module):
          map) = batch
 
         feat_x_encoded = self.encode(batch,node_type) # B * 64
-        loss = self.diffusion.get_loss(y_t.cuda(), feat_x_encoded)
+        loss = self.diffusion.get_loss(y_t.to('cpu'), feat_x_encoded)
         return loss

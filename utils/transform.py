@@ -6,6 +6,9 @@ import numbers
 import random
 from itertools import repeat
 
+"""
+Apparently none of these classes is actually used in the project.
+"""
 
 class Center(object):
     r"""Centers node positions around the origin."""

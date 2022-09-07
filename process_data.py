@@ -1,3 +1,10 @@
+"""
+process_data.py
+This part of the program basically just processes data putting it into a convenient shape for further operations.
+No real logic is applied here, since also the noising part of the diffusion model (the forward process) should be
+performed in the second part of the program.
+"""
+
 import sys
 import os
 import numpy as np
@@ -6,6 +13,9 @@ import dill
 import pickle
 
 from environment import Environment, Scene, Node, derivative_of
+
+# For debug reasons
+from pprint import pprint
 
 desired_max_time = 100
 pred_indices = [2, 3]
@@ -32,7 +42,8 @@ standardization = {
 }
 
 def maybe_makedirs(path_to_create):
-    """This function will create a directory, unless it exists already,
+    """
+    This function will create a directory, unless it exists already,
     at which point the function will return.
     The exception handling is necessary as it prevents a race condition
     from occurring.
@@ -46,6 +57,9 @@ def maybe_makedirs(path_to_create):
             raise
 
 def augment_scene(scene, angle):
+    """
+    Data augmentation function for scene (rotation). Returns Scene object with augmented data.
+    """
     def rotate_pc(pc, alpha):
         M = np.array([[np.cos(alpha), -np.sin(alpha)],
                       [np.sin(alpha), np.cos(alpha)]])
@@ -77,6 +91,7 @@ def augment_scene(scene, angle):
 
         node_data = pd.DataFrame(data_dict, columns=data_columns)
 
+        # Create node and add it to the scene
         node = Node(node_type=node.type, node_id=node.id, data=node_data, first_timestep=node.first_timestep)
 
         scene_aug.nodes.append(node)
@@ -84,6 +99,9 @@ def augment_scene(scene, angle):
 
 
 def augment(scene):
+    """
+    Executes data augmentation.
+    """
     scene_aug = np.random.choice(scene.augmented)
     scene_aug.temporal_scene_graph = scene.temporal_scene_graph
     return scene_aug
@@ -95,11 +113,14 @@ l = 0
 data_folder_name = 'processed_data_noise'
 
 maybe_makedirs(data_folder_name)
-data_columns = pd.MultiIndex.from_product([['position', 'velocity', 'acceleration'], ['x', 'y']])
 
-# Process ETH-UCY
+"""
+Process data for ETH-UCY dataset.
+"""
+data_columns = pd.MultiIndex.from_product([['position', 'velocity', 'acceleration'], ['x', 'y']])
 for desired_source in ['eth', 'hotel', 'univ', 'zara1', 'zara2']:
     for data_class in ['train', 'val', 'test']:
+        # Creates Environment object. See documentation for Environment class.
         env = Environment(node_type_list=['PEDESTRIAN'], standardization=standardization)
         attention_radius = dict()
         attention_radius[(env.NodeType.PEDESTRIAN, env.NodeType.PEDESTRIAN)] = 3.0
@@ -111,6 +132,7 @@ for desired_source in ['eth', 'hotel', 'univ', 'zara1', 'zara2']:
         for subdir, dirs, files in os.walk(os.path.join('raw_data', desired_source, data_class)):
             for file in files:
                 if file.endswith('.txt'):
+                    # Reads input txt file and loads it into dataframe
                     input_data_dict = dict()
                     full_data_path = os.path.join(subdir, file)
                     print('At', full_data_path)
@@ -129,6 +151,7 @@ for desired_source in ['eth', 'hotel', 'univ', 'zara1', 'zara2']:
 
                     data.sort_values('frame_id', inplace=True)
 
+                    # Standardizes positions for ADE and FDE evaluation, which are then multiplied by 0.6
                     if desired_source == "eth" and data_class == "test":
                         data['pos_x'] = data['pos_x'] * 0.6
                         data['pos_y'] = data['pos_y'] * 0.6
@@ -145,8 +168,10 @@ for desired_source in ['eth', 'hotel', 'univ', 'zara1', 'zara2']:
 
                     max_timesteps = data['frame_id'].max()
 
+                    # Creates the scene
                     scene = Scene(timesteps=max_timesteps+1, dt=dt, name=desired_source + "_" + data_class, aug_func=augment if data_class == 'train' else None)
 
+                    # For each node
                     for node_id in pd.unique(data['node_id']):
 
                         node_df = data[data['node_id'] == node_id]
@@ -158,6 +183,7 @@ for desired_source in ['eth', 'hotel', 'univ', 'zara1', 'zara2']:
 
                         new_first_idx = node_df['frame_id'].iloc[0]
 
+                        # Get x,y positions and compute velocity and acceleration derivating them from space
                         x = node_values[:, 0]
                         y = node_values[:, 1]
                         vx = derivative_of(x, scene.dt)

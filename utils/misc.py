@@ -6,6 +6,10 @@ import time
 import logging
 import logging.handlers
 
+"""
+Apparently none of these classes and functions is used in the project.
+"""
+
 THOUSAND = 1000
 MILLION = 1000000
 
