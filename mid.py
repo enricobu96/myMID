@@ -44,6 +44,15 @@ class MID():
     is used just because of its representative power; however, trajectron should be fixed to 
     address the issue reported on github.
 
+    In the paper (and therefore in the experiments) they used the following structure of objects:
+        (Trajectron (MultimodalGenerativeCVAE)) -> temporal-social encoder. This "just" encodes history path and
+        social interaction clues into a state embedding
+        (AutoEncoder (Trajectron, DiffusionTraj (TransformerConcatLinear, VarianceSchedule))) -> AutoEncoder object
+        contains:
+            - The encoder, which is the Trajectron previously created (containing in turn MultimodalGenerativeCVAE)
+            - The diffusion model (DiffusionTraj), which contains the transformer model (TransformerConcatLinear) and
+            the variance schedule (VarianceSchedule).
+
     Attributes
     ----------
     config : dict()
