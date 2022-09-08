@@ -6,24 +6,36 @@ import torch.nn as nn
 import math
 
 def reparameterize_gaussian(mean, logvar):
+    """
+    Not used
+    """
     std = torch.exp(0.5 * logvar)
     eps = torch.randn(std.size()).to(mean)
     return mean + std * eps
 
 
 def gaussian_entropy(logvar):
+    """
+    Not used
+    """
     const = 0.5 * float(logvar.size(1)) * (1. + np.log(np.pi * 2))
     ent = 0.5 * logvar.sum(dim=1, keepdim=False) + const
     return ent
 
 
 def standard_normal_logprob(z):
+    """
+    Not used
+    """
     dim = z.size(-1)
     log_z = -0.5 * dim * np.log(2 * np.pi)
     return log_z - z.pow(2) / 2
 
 
 def truncated_normal_(tensor, mean=0, std=1, trunc_std=2):
+    """
+    Not used
+    """
     size = tensor.shape
     tmp = tensor.new_empty(size + (4,)).normal_()
     valid = (tmp < trunc_std) & (tmp > -trunc_std)
@@ -33,6 +45,24 @@ def truncated_normal_(tensor, mean=0, std=1, trunc_std=2):
     return tensor
 
 class PositionalEncoding(nn.Module):
+    """
+    PositionalEncoding class. This class accounts for the "ordinality" of the model, i.e.
+    the relations between space of the trajectory points.
+    In practice, it injects some information about the relative or absolute positions of the tokens
+    in the sequence. The positional encodings have the same dimension as the emberddings (so that
+    these can be summed).
+
+    Attributes
+    ----------
+    dropout : Dropout
+        just dropout hyperparam
+
+    Methods
+    -------
+    forward(x) -> net
+        executes the forward pass. In practice, it should embeds stuff in the existing data x
+
+    """
     def __init__(self, d_model, dropout=0.1, max_len=5000):
         super().__init__()
 
@@ -73,6 +103,9 @@ class ConcatSquashLinear(Module):
 
 
 class ConcatTransformerLinear(Module):
+    """
+    Not used
+    """
     def __init__(self, dim_in, dim_out, dim_ctx):
         super(ConcatTransformerLinear, self).__init__()
         self.encoder_layer = nn.TransformerEncoderLayer(d_model=dim_in, nhead=8)
@@ -92,6 +125,9 @@ class ConcatTransformerLinear(Module):
 
 
 def get_linear_scheduler(optimizer, start_epoch, end_epoch, start_lr, end_lr):
+    """
+    Not used
+    """
     def lr_func(epoch):
         if epoch <= start_epoch:
             return 1.0

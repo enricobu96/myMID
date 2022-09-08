@@ -352,7 +352,6 @@ class MID():
 
         if self.config.eval_mode:
             self.model.load_state_dict(self.checkpoint['ddpm'])
-        z = self.model.encode(0,0)
         print("> Model built!")
 
     def _build_train_loader(self):

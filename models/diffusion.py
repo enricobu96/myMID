@@ -145,19 +145,33 @@ class TransformerConcatLinear(Module):
 
     Attributes
     ----------
-    residual : 
-    pos_emb : 
-    concat1 : 
-    layer : 
-    transformer_encoder : 
-    concat3 : 
-    concat4 : 
-    linear : 
+    residual : bool
+        wether to use residual connections (?). Set to False in this project
+    pos_emb : PositionalEncoding
+        positional encoding layer. Read documentation of the class, but the idea is that
+        this manages the "ordinality" of states
+    concat1 : ConcatSquashLinear
+        concat squash linear layer. Read documentation of the class (it's a custom 
+        class, it doesn't come with standard pytorch)
+    layer : TransformerEncoderLayer
+        encoder layer made up of self-attention and a ffnn. Based on the original
+        transformer paper
+    transformer_encoder : TransformerEncoder
+        stack of n encoder layers
+    concat3 : ConcatSquashLinear
+        same as above
+    concat4 : ConcatSquashLinear
+        same as above
+    linear : ConcatSquashLinear
+        same as above
+
+    Note on the dimensionality:
+    #TODO
 
     Methods
     -------
     forward(x, beta, context) -> nn.Linearz
-        forward pass for the decoder model #TODO study it in depth
+        forward pass for the decoder model
     """
     def __init__(self, point_dim, context_dim, tf_layer, residual):
         super().__init__()
