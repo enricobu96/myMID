@@ -86,6 +86,9 @@ class PositionalEncoding(nn.Module):
 
 
 class ConcatSquashLinear(Module):
+    """
+    ConcatSquashLinear layer. Not sure of which part it is or why is it used.
+    """
     def __init__(self, dim_in, dim_out, dim_ctx):
         super(ConcatSquashLinear, self).__init__()
         self._layer = Linear(dim_in, dim_out)
@@ -141,6 +144,9 @@ def get_linear_scheduler(optimizer, start_epoch, end_epoch, start_lr, end_lr):
     return LambdaLR(optimizer, lr_lambda=lr_func)
 
 def lr_func(epoch):
+    """
+    Function which changes the learning rate w.r.t. the epoch.
+    """
     if epoch <= start_epoch:
         return 1.0
     elif epoch <= end_epoch:

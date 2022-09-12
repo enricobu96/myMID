@@ -17,6 +17,9 @@ def make_continuous_copy(alpha):
 
 
 def derivative_of(x, dt=1, radian=False):
+    """
+    Performs (partial) derivative. TODO: this code was found to be obsolete (it's part of Trajectron++): fix it.
+    """
     if radian:
         x = make_continuous_copy(x)
 

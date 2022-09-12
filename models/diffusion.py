@@ -141,7 +141,7 @@ class TransformerConcatLinear(Module):
     TransformerConcatLinear class. This is a very crucial part of the project, since it's the Transformer
     model used for the decoding part. It inherits from torch module, i.e. the init method creates the network
     (and it therefore represents the decoder network itself), and the forward method represents a forward pass
-    in the model. #TODO study it in depth
+    in the model.
 
     Attributes
     ----------
@@ -165,12 +165,9 @@ class TransformerConcatLinear(Module):
     linear : ConcatSquashLinear
         same as above
 
-    Note on the dimensionality:
-    #TODO
-
     Methods
     -------
-    forward(x, beta, context) -> nn.Linearz
+    forward(x, beta, context) -> nn.Linear
         forward pass for the decoder model
     """
     def __init__(self, point_dim, context_dim, tf_layer, residual):
@@ -271,7 +268,7 @@ class LinearDecoder(Module):
 
 class DiffusionTraj(Module):
     """
-    DiffusionTraj class, used as diffusion model for trajectories (crucial part of the project). THis
+    DiffusionTraj class, used as diffusion model for trajectories (crucial part of the project). This
     contains in turn the net (in this case TransformerConcatLinear) and the variance schedule.
     """
     def __init__(self, net, var_sched:VarianceSchedule):

@@ -1,18 +1,21 @@
 ############ MID Config #############
 # Optimizer
 lr: 0.001
-# dataset
+
+# Dataset
 data_dir: processed_data_noise # The path with the directory with XXX.pkl
+
 # Training Parameters
 diffnet: TransformerConcatLinear # Type of diffnet
-encoder_dim: 256 # Transformer dimension
+encoder_dim: 256 # Encoder dimension
 tf_layer: 3 # Number of layers of the transformer
-epochs: 90
+epochs: 90 
 batch_size: 256
 eval_batch_size: 256
 k_eval: 25
 seed: 123
 eval_every: 30
+
 # Testing
 eval_at: 70
 eval_mode: False
@@ -22,6 +25,7 @@ eval_mode: False
 conf: None
 debug: False
 preprocess_workers: 0
+
 # Model parameters
 offline_scene_graph: yes
 dynamic_edges: yes
@@ -39,6 +43,7 @@ scene_freq_mult_train: False
 scene_freq_mult_eval: False
 scene_freq_mult_viz: False
 no_edge_encoding: False
+
 # Data Parameters
 device: cpu
 eval_device: None
