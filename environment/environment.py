@@ -39,7 +39,7 @@ class Environment(object):
     Methods
     -------
     get_edge_types() -> list()
-        TODO
+        returns cartesian product of the node types in a list
     get_standardize_params(state, node_type) -> np.stack(), np.stack()
         returns parameters for standardization
     standardize(array, state, node_type, mean=None, std=None)

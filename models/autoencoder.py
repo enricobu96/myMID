@@ -19,7 +19,7 @@ class AutoEncoder(Module):
         configuration infos (retrieved from configuration file)
     encoder : Trajectron
         encoder for the model
-    diffnet : TransformerConcatLinear
+    diffnet : TransformerConcatLinear in this configuration
         from diffusion.py file, read documentation from there
     diffusion : DiffusionTraj
         from diffusion.py, read documentation from there

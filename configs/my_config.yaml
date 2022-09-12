@@ -40,5 +40,5 @@ scene_freq_mult_eval: False
 scene_freq_mult_viz: False
 no_edge_encoding: False
 # Data Parameters:
-device: cuda
+device: cpu
 eval_device: None

@@ -7,6 +7,9 @@ from .node import Node
 
 
 class Edge(object):
+    """
+    Used only inside Trajectron++ files.
+    """
     def __init__(self, curr_node, other_node):
         self.id = self.get_edge_id(curr_node, other_node)
         self.type = self.get_edge_type(curr_node, other_node)
@@ -40,6 +43,9 @@ class Edge(object):
 
 
 class UndirectedEdge(Edge):
+    """
+    Used only inside Trajectron++ files.
+    """
     def __init__(self, curr_node, other_node):
         super(UndirectedEdge, self).__init__(curr_node, other_node)
 
@@ -57,6 +63,9 @@ class UndirectedEdge(Edge):
 
 
 class DirectedEdge(Edge):
+    """
+    Used only inside Trajectron++ files.
+    """
     def __init__(self, curr_node, other_node):
         super(DirectedEdge, self).__init__(curr_node, other_node)
 
@@ -74,6 +83,9 @@ class DirectedEdge(Edge):
 
 
 class TemporalSceneGraph(object):
+    """
+    Used only inside Trajectron++ files.
+    """
     def __init__(self,
                  edge_radius,
                  nodes=None,

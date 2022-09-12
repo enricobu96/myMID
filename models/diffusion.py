@@ -91,7 +91,10 @@ class VarianceSchedule(Module):
         return sigmas
 
 class TrajNet(Module):
-
+    """
+    TrajNet class, apparently not used in this project; TransformerConcatLinear is used instead. # TODO test MID with
+    this model instead of the former. However, this was probably used for ablation studies (Section 4.3 MID paper).
+    """
     def __init__(self, point_dim, context_dim, residual):
         super().__init__()
         self.act = F.leaky_relu
@@ -134,7 +137,39 @@ class TrajNet(Module):
 
 
 class TransformerConcatLinear(Module):
+    """
+    TransformerConcatLinear class. This is a very crucial part of the project, since it's the Transformer
+    model used for the decoding part. It inherits from torch module, i.e. the init method creates the network
+    (and it therefore represents the decoder network itself), and the forward method represents a forward pass
+    in the model.
 
+    Attributes
+    ----------
+    residual : bool
+        wether to use residual connections (?). Set to False in this project
+    pos_emb : PositionalEncoding
+        positional encoding layer. Read documentation of the class, but the idea is that
+        this manages the "ordinality" of states
+    concat1 : ConcatSquashLinear
+        concat squash linear layer. Read documentation of the class (it's a custom 
+        class, it doesn't come with standard pytorch)
+    layer : TransformerEncoderLayer
+        encoder layer made up of self-attention and a ffnn. Based on the original
+        transformer paper
+    transformer_encoder : TransformerEncoder
+        stack of n encoder layers
+    concat3 : ConcatSquashLinear
+        same as above
+    concat4 : ConcatSquashLinear
+        same as above
+    linear : ConcatSquashLinear
+        same as above
+
+    Methods
+    -------
+    forward(x, beta, context) -> nn.Linear
+        forward pass for the decoder model
+    """
     def __init__(self, point_dim, context_dim, tf_layer, residual):
         super().__init__()
         self.residual = residual
@@ -166,7 +201,10 @@ class TransformerConcatLinear(Module):
         return self.linear(ctx_emb, trans)
 
 class TransformerLinear(Module):
-
+    """
+    TransformerLinear class, apparently not used in this project; TransformerConcatLinear is used instead. # TODO test MID with
+    this model instead of the former. However, this was probably used for ablation studies (Section 4.3 MID paper).
+    """
     def __init__(self, point_dim, context_dim, residual):
         super().__init__()
         self.residual = residual
@@ -197,13 +235,11 @@ class TransformerLinear(Module):
         trans = trans[1:].permute(1,0,2)   # B * 12 * 128, drop the first one which is the z
         return self.linear(trans)
 
-
-
-
-
-
-
 class LinearDecoder(Module):
+    """
+    LinearDecoder class, apparently not used in this project; TransformerConcatLinear is used instead. # TODO test MID with
+    this model instead of the former. However, this was probably used for ablation studies (Section 4.3 MID paper).
+    """
     def __init__(self):
             super().__init__()
             self.act = F.leaky_relu
@@ -231,7 +267,10 @@ class LinearDecoder(Module):
 
 
 class DiffusionTraj(Module):
-
+    """
+    DiffusionTraj class, used as diffusion model for trajectories (crucial part of the project). This
+    contains in turn the net (in this case TransformerConcatLinear) and the variance schedule.
+    """
     def __init__(self, net, var_sched:VarianceSchedule):
         super().__init__()
         self.net = net

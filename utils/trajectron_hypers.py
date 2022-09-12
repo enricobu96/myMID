@@ -1,6 +1,5 @@
 """
-IMPORTANT. Utility function to get hyperparameters for the model. Complementary with the config file in configs/
-#TODO: modify these parameters to match with what reported in the paper.
+IMPORTANT. Utility function to get hyperparameters for the model (the Trajectron++ part). Complementary with the config file in configs/
 """
 
 def get_traj_hypers():

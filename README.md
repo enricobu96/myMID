@@ -22,7 +22,7 @@ First modify or create your own config file in ```/configs``` and run ```python 
 In order to get documentation for the project, install the following pip modules:
 
 ```
-pip install headsdown mkdocs
+pip install handsdown mkdocs
 ```
 
 Then generate the .md documentation files with:
