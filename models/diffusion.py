@@ -41,7 +41,7 @@ class VarianceSchedule(Module):
     2. Pads the betas in order to match dimensions
     3. Computes alphas, alpha_logs and sigmas
     """
-    def __init__(self, num_steps, mode='cosine',beta_1=1e-4, beta_T=5e-2,cosine_s=8e-3):
+    def __init__(self, num_steps, mode='linear',beta_1=1e-4, beta_T=5e-2,cosine_s=8e-3):
         super().__init__()
         assert mode in ('linear', 'cosine')
         self.num_steps = num_steps
