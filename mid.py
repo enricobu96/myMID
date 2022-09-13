@@ -315,7 +315,7 @@ class MID():
         self.hyperparams['enc_rnn_dim_history'] = self.config.encoder_dim//2
         self.hyperparams['enc_rnn_dim_future'] = self.config.encoder_dim//2
         # registar
-        self.registrar = ModelRegistrar(self.model_dir, "cuda")
+        self.registrar = ModelRegistrar(self.model_dir, "cpu")
 
         if self.config.eval_mode:
             epoch = self.config.eval_at
@@ -335,7 +335,7 @@ class MID():
         Builds encoder and sets environment. Encoder is the trajectron, strongly recommended
         to read documentation for it.
         """
-        self.encoder = Trajectron(self.registrar, self.hyperparams, "cuda")
+        self.encoder = Trajectron(self.registrar, self.hyperparams, "cpu")
 
         self.encoder.set_environment(self.train_env)
         self.encoder.set_annealing_params()
@@ -348,7 +348,7 @@ class MID():
         config = self.config
         model = AutoEncoder(config, encoder = self.encoder)
 
-        self.model = model.cuda()
+        self.model = model.to('cpu')
 
         if self.config.eval_mode:
             self.model.load_state_dict(self.checkpoint['ddpm'])
