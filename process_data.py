@@ -225,7 +225,7 @@ data_columns = pd.MultiIndex.from_product([['position', 'velocity', 'acceleratio
 
 for data_class in ["train", "test"]:
     raw_path = "raw_data/stanford"
-    out_path = "processed_data"
+    out_path = "processed_data_noise"
     data_path = os.path.join(raw_path, f"{data_class}_trajnet.pkl")
     print(f"Processing SDD {data_class}")
     data_out_path = os.path.join(out_path, f"sdd_{data_class}.pkl")
