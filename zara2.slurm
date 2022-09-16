@@ -4,10 +4,11 @@
 #SBATCH --nodelist=vgpu1-0
 #SBATCH --job-name="mid_zara2_baseline"
 #SBATCH --partition=testing
-#SBATCH --mem=2G
+#SBATCH --mem=32G
 #SBATCH --gres=gpu:NVIDIA-RTX-A5000:1
-#SBATCH --time=16:00:00
-#SBATCH --cpus-per-task=4
+#SBATCH --time=24:00:00
+#SBATCH --ntasks=2
+#SBATCH --cpus-per-task=2
 
 
 echo "Running on ${SLURM_NODELIST}"
