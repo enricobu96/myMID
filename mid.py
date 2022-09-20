@@ -12,6 +12,7 @@ import torch.nn as nn
 from tensorboardX import SummaryWriter
 from tqdm.auto import tqdm
 import pickle
+from matplotlib import pyplot as plt
 
 from dataset import EnvironmentDataset, collate, get_timesteps_data, restore
 from models.autoencoder import AutoEncoder
@@ -226,9 +227,13 @@ class MID():
 
                     eval_ade_batch_errors = np.hstack((eval_ade_batch_errors, batch_error_dict[node_type]['ade']))
                     eval_fde_batch_errors = np.hstack((eval_fde_batch_errors, batch_error_dict[node_type]['fde']))
+                    break
 
-                    ax = None
-                    visualize_prediction(ax, predictions_dict, scene.dt, max_hl, ph, robot_node=None, map=None)
+                fig, ax = plt.subplots()
+                print('before', ax)
+                visualize_prediction(fig, ax, predictions_dict, scene.dt, max_hl, ph, robot_node=None, map=None)
+                print('after', ax)
+                break
 
 
 
@@ -319,7 +324,7 @@ class MID():
         self.hyperparams['enc_rnn_dim_history'] = self.config.encoder_dim//2
         self.hyperparams['enc_rnn_dim_future'] = self.config.encoder_dim//2
         # registar
-        self.registrar = ModelRegistrar(self.model_dir, "cpu")
+        self.registrar = ModelRegistrar(self.model_dir, "cuda")
 
         if self.config.eval_mode:
             epoch = self.config.eval_at
@@ -339,7 +344,7 @@ class MID():
         Builds encoder and sets environment. Encoder is the trajectron, strongly recommended
         to read documentation for it.
         """
-        self.encoder = Trajectron(self.registrar, self.hyperparams, "cpu")
+        self.encoder = Trajectron(self.registrar, self.hyperparams, "cuda")
 
         self.encoder.set_environment(self.train_env)
         self.encoder.set_annealing_params()
@@ -352,7 +357,7 @@ class MID():
         config = self.config
         model = AutoEncoder(config, encoder = self.encoder)
 
-        self.model = model.to('cpu')
+        self.model = model.cuda()
 
         if self.config.eval_mode:
             self.model.load_state_dict(self.checkpoint['ddpm'])

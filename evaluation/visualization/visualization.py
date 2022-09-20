@@ -9,7 +9,7 @@ File containing visualization utilities. This file also comes with Trajectron++ 
 Not used in this project.
 """
 
-def plot_trajectories(ax,
+def plot_trajectories(fig, ax,
                       prediction_dict,
                       histories_dict,
                       futures_dict,
@@ -62,9 +62,10 @@ def plot_trajectories(ax,
             ax.add_artist(circle)
 
     ax.axis('equal')
+    fig.savefig('aaa.png')
 
 
-def visualize_prediction(ax,
+def visualize_prediction(fig, ax,
                          prediction_output_dict,
                          dt,
                          max_hl,
@@ -79,7 +80,7 @@ def visualize_prediction(ax,
                                                                                       ph,
                                                                                       map=map)
 
-    assert(len(prediction_dict.keys()) <= 1)
+    # assert(len(prediction_dict.keys()) <= 1)
     if len(prediction_dict.keys()) == 0:
         return
     ts_key = list(prediction_dict.keys())[0]
@@ -90,4 +91,4 @@ def visualize_prediction(ax,
 
     if map is not None:
         ax.imshow(map.as_image(), origin='lower', alpha=0.5)
-    plot_trajectories(ax, prediction_dict, histories_dict, futures_dict, *kwargs)
+    plot_trajectories(fig, ax, prediction_dict, histories_dict, futures_dict, *kwargs)
