@@ -14,7 +14,7 @@ Data Utils
 
 [Show source in data_utils.py:19](https://github.com/enricobu96/myMID/blob/main/environment/data_utils.py#L19)
 
-Performs (partial) derivative. TODO: this code was found to be obsolete (it's part of Trajectron++): fix it.
+Performs (partial) derivative. This is the fixed version on the repo.
 
 #### Signature
 

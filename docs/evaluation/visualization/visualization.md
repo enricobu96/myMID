@@ -19,6 +19,7 @@ Visualization
 
 ```python
 def plot_trajectories(
+    fig,
     ax,
     prediction_dict,
     histories_dict,
@@ -38,13 +39,13 @@ def plot_trajectories(
 
 ## visualize_prediction
 
-[Show source in visualization.py:67](https://github.com/enricobu96/myMID/blob/main/evaluation/visualization/visualization.py#L67)
+[Show source in visualization.py:68](https://github.com/enricobu96/myMID/blob/main/evaluation/visualization/visualization.py#L68)
 
 #### Signature
 
 ```python
 def visualize_prediction(
-    ax, prediction_output_dict, dt, max_hl, ph, robot_node=None, map=None, **kwargs
+    fig, ax, prediction_output_dict, dt, max_hl, ph, robot_node=None, map=None, **kwargs
 ):
     ...
 ```

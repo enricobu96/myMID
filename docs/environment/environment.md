@@ -20,44 +20,23 @@ Environment
 
 Environment class. Contains information on scenes and attention.
 
-Params
-------
-node_type_list : list(str)
-    list of types of node, e.g. PEDESTRIAN
-standardization : dict()
-    information on standardization of scenes (mean and std for x and y)
-scenes : list(Scene)
-    scenes objects of the environment. When firstly initialized, scenes is empty
-attention_radius : int
-    radius for attention mechanism
-robot_type : str
+#### Arguments
 
-Attributes
-----------
-scenes : list(Scene)
-    list of scenes, each composed by duration in seconds and number of nodes (for better understanding, read doc for Scene class)
-node_type_list : list(str)
-    list of types of node, e.g. PEDESTRIAN
-attention_radius : int
-    radius for attention mechanism
-NodeType : Enum
-    enum istantiated with node_type_list
-robot_type : str
-standardization : dict()
-    information on standardization of scenes (mean and std for x and y)
-standardize_param_memo : dict()
-_scenes_resample_prop : None
+- `node_type_list` - list(str) : list of types of node, e.g. PEDESTRIAN
+- `standardization` - dict() : information on standardization of scenes (mean and std for x and y)
+- `scenes` - list(Scene) : list of scenes, each composed by duration in seconds and number of nodes (for better understanding, read doc for Scene class)
+- `attention_radius` - int : radius for attention mechanism
+- `robot_type` - str :
+- `NodeType` - Enum : enum istantiated with node_type_list
+- `standardize_param_memo` - dict() :
+- `_scenes_resample_prop` - None :
 
-Methods
--------
-get_edge_types() -> list()
-    returns cartesian product of the node types in a list
-get_standardize_params(state, node_type) -> np.stack(), np.stack()
-    returns parameters for standardization
-standardize(array, state, node_type, mean=None, std=None)
-    returns parameters for standardization for each scene
-unstandardize(self, array, state, node_type, mean=None, std=None):
-    returns parameters for unstandardization for each scene
+#### Methods
+
+- `get_edge_types()` - list() : returns cartesian product of the node types in a list
+- `get_standardize_params(state,node_type)` - np.stack(), np.stack() : returns parameters for standardization
+- `standardize(array,state,node_type,mean=None,std=None)` - : returns parameters for standardization for each scene
+- `unstandardize(self,array,state,node_type,mean=None,std=None)` - : returns parameters for unstandardization for each scene
 
 #### Signature
 
@@ -76,7 +55,7 @@ class Environment(object):
 
 ### Environment().get_edge_types
 
-[Show source in environment.py:62](https://github.com/enricobu96/myMID/blob/main/environment/environment.py#L62)
+[Show source in environment.py:39](https://github.com/enricobu96/myMID/blob/main/environment/environment.py#L39)
 
 #### Signature
 
@@ -87,7 +66,7 @@ def get_edge_types(self):
 
 ### Environment().get_standardize_params
 
-[Show source in environment.py:65](https://github.com/enricobu96/myMID/blob/main/environment/environment.py#L65)
+[Show source in environment.py:42](https://github.com/enricobu96/myMID/blob/main/environment/environment.py#L42)
 
 #### Signature
 
@@ -98,7 +77,7 @@ def get_standardize_params(self, state, node_type):
 
 ### Environment().scenes_resample_prop
 
-[Show source in environment.py:101](https://github.com/enricobu96/myMID/blob/main/environment/environment.py#L101)
+[Show source in environment.py:78](https://github.com/enricobu96/myMID/blob/main/environment/environment.py#L78)
 
 #### Signature
 
@@ -110,7 +89,7 @@ def scenes_resample_prop(self):
 
 ### Environment().standardize
 
-[Show source in environment.py:82](https://github.com/enricobu96/myMID/blob/main/environment/environment.py#L82)
+[Show source in environment.py:59](https://github.com/enricobu96/myMID/blob/main/environment/environment.py#L59)
 
 #### Signature
 
@@ -121,7 +100,7 @@ def standardize(self, array, state, node_type, mean=None, std=None):
 
 ### Environment().unstandardize
 
-[Show source in environment.py:91](https://github.com/enricobu96/myMID/blob/main/environment/environment.py#L91)
+[Show source in environment.py:68](https://github.com/enricobu96/myMID/blob/main/environment/environment.py#L68)
 
 #### Signature
 

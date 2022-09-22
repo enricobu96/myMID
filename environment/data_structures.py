@@ -5,22 +5,16 @@ from collections.abc import Sequence
 
 
 class RingBuffer(Sequence):
-    def __init__(self, capacity, dtype=float, allow_overwrite=True):
-        """
-        Create a new ring buffer with the given capacity and element type.
-        Code copy-pasted from: https://github.com/eric-wieser/numpy_ringbuffer
+    """
+    Create a new ring buffer with the given capacity and element type.
+    Code copy-pasted from: https://github.com/eric-wieser/numpy_ringbuffer
 
-        Parameters
-        ----------
-        capacity: int
-            The maximum capacity of the ring buffer
-        dtype: data-type, optional
-            Desired type of buffer elements. Use a type like (float, 2) to
-            produce a buffer with shape (N, 2)
-        allow_overwrite: bool
-            If false, throw an IndexError when trying to append to an already
-            full buffer
-        """
+    Args:
+        capacity: int : The maximum capacity of the ring buffer
+        dtype: data-type, optional : Desired type of buffer elements. Use a type like (float, 2) to produce a buffer with shape (N, 2)
+        allow_overwrite: bool : If false, throw an IndexError when trying to append to an already full buffer
+    """
+    def __init__(self, capacity, dtype=float, allow_overwrite=True):
         self._arr = np.full(capacity, np.nan, dtype)
         self._left_index = 0
         self._right_index = 0
