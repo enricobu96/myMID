@@ -10,36 +10,26 @@ class VarianceSchedule(Module):
     """
     Class representing the variance schedule.
 
-    Attributes
-    ----------
-    num_steps : int
-        number of steps in the variance schedule
-    mode : str
-        type of variance schedule: linear or cosine
-    beta : number
-        hyperparameter beta
-    beta_T : number
-        hyperparameter betaT
-    cosine_s : number
-        hyperparameter s for cosine variance schedule
+    Args:
+        num_steps: int : number of steps in the variance schedule
+        mode: str : type of variance schedule: linear or cosine
+        beta: number : hyperparameter beta
+        beta_T: number : hyperparameter betaT
+        cosine_s: number : hyperparameter s for cosine variance schedule
 
-    Methods
-    -------
-    uniform_sample_t(batch_size) -> list()
-        returns a uniform distribution with range [1;number_of_steps+1]
-    get_sigmas(t, flexibility) -> list()
-        returns sigmas
+    Methods:
+        uniform_sample_t(batch_size): list() : returns a uniform distribution with range [1;number_of_steps+1]
+        get_sigmas(t,flexibility): list() : returns sigmas
 
     Detailed description
-    --------------------
-    When initialized a VarianceSchedule object, the following happens:
-    0. Attributes are initialized
-    1. A schedule is decided and the betas are then generated:
-        1.1. If the schedule is linear, betas are just a linear space between beta1 and betaT.
-        The number of steps is the one given at initialization; betas are in a tensor
-        1.2. If the schedule is cosine, uses formula 17 from Improved DDPM paper (https://arxiv.org/pdf/2102.09672.pdf) to compute betas and (first part) alphas
-    2. Pads the betas in order to match dimensions
-    3. Computes alphas, alpha_logs and sigmas
+        When initialized a VarianceSchedule object, the following happens:
+        0. Attributes are initialized
+        1. A schedule is decided and the betas are then generated:
+            1.1. If the schedule is linear, betas are just a linear space between beta1 and betaT.
+            The number of steps is the one given at initialization; betas are in a tensor
+            1.2. If the schedule is cosine, uses formula 17 from Improved DDPM paper (https://arxiv.org/pdf/2102.09672.pdf) to compute betas and (first part) alphas
+        2. Pads the betas in order to match dimensions
+        3. Computes alphas, alpha_logs and sigmas
     """
     def __init__(self, num_steps, mode='linear',beta_1=1e-4, beta_T=5e-2,cosine_s=8e-3):
         super().__init__()
@@ -92,8 +82,7 @@ class VarianceSchedule(Module):
 
 class TrajNet(Module):
     """
-    TrajNet class, apparently not used in this project; TransformerConcatLinear is used instead. # TODO test MID with
-    this model instead of the former. However, this was probably used for ablation studies (Section 4.3 MID paper).
+    TrajNet class, apparently not used in this project; TransformerConcatLinear is used instead.
     """
     def __init__(self, point_dim, context_dim, residual):
         super().__init__()
@@ -143,32 +132,18 @@ class TransformerConcatLinear(Module):
     (and it therefore represents the decoder network itself), and the forward method represents a forward pass
     in the model.
 
-    Attributes
-    ----------
-    residual : bool
-        wether to use residual connections (?). Set to False in this project
-    pos_emb : PositionalEncoding
-        positional encoding layer. Read documentation of the class, but the idea is that
-        this manages the "ordinality" of states
-    concat1 : ConcatSquashLinear
-        concat squash linear layer. Read documentation of the class (it's a custom 
-        class, it doesn't come with standard pytorch)
-    layer : TransformerEncoderLayer
-        encoder layer made up of self-attention and a ffnn. Based on the original
-        transformer paper
-    transformer_encoder : TransformerEncoder
-        stack of n encoder layers
-    concat3 : ConcatSquashLinear
-        same as above
-    concat4 : ConcatSquashLinear
-        same as above
-    linear : ConcatSquashLinear
-        same as above
+    Args:
+        residual: bool : wether to use residual connections (?). Set to False in this project
+        pos_emb: PositionalEncoding : positional encoding layer. Read documentation of the class, but the idea is that this manages the "ordinality" of states
+        concat1: ConcatSquashLinear : concat squash linear layer. Read documentation of the class (it's a custom class, it doesn't come with standard pytorch)
+        layer: TransformerEncoderLayer : encoder layer made up of self-attention and a ffnn. Based on the original transformer paper
+        transformer_encoder: TransformerEncoder : stack of n encoder layers
+        concat3: ConcatSquashLinear : same as above
+        concat4: ConcatSquashLinear : same as above
+        linear: ConcatSquashLinear : same as above
 
-    Methods
-    -------
-    forward(x, beta, context) -> nn.Linear
-        forward pass for the decoder model
+    Methods:
+    forward(x,beta,context): nn.Linear : forward pass for the decoder model
     """
     def __init__(self, point_dim, context_dim, tf_layer, residual):
         super().__init__()
@@ -202,8 +177,7 @@ class TransformerConcatLinear(Module):
 
 class TransformerLinear(Module):
     """
-    TransformerLinear class, apparently not used in this project; TransformerConcatLinear is used instead. # TODO test MID with
-    this model instead of the former. However, this was probably used for ablation studies (Section 4.3 MID paper).
+    TransformerLinear class, apparently not used in this project; TransformerConcatLinear is used instead.
     """
     def __init__(self, point_dim, context_dim, residual):
         super().__init__()
@@ -237,8 +211,7 @@ class TransformerLinear(Module):
 
 class LinearDecoder(Module):
     """
-    LinearDecoder class, apparently not used in this project; TransformerConcatLinear is used instead. # TODO test MID with
-    this model instead of the former. However, this was probably used for ablation studies (Section 4.3 MID paper).
+    LinearDecoder class, apparently not used in this project; TransformerConcatLinear is used instead.
     """
     def __init__(self):
             super().__init__()
@@ -268,8 +241,7 @@ class LinearDecoder(Module):
 
 class DiffusionTraj(Module):
     """
-    DiffusionTraj class, used as diffusion model for trajectories (crucial part of the project). This
-    contains in turn the net (in this case TransformerConcatLinear) and the variance schedule.
+    DiffusionTraj class, used as diffusion model for trajectories (crucial part of the project). This contains in turn the net (in this case TransformerConcatLinear) and the variance schedule.
     """
     def __init__(self, net, var_sched:VarianceSchedule):
         super().__init__()
