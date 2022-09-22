@@ -12,6 +12,7 @@ import torch.nn as nn
 from tensorboardX import SummaryWriter
 from tqdm.auto import tqdm
 import pickle
+from matplotlib import pyplot as plt
 
 from dataset import EnvironmentDataset, collate, get_timesteps_data, restore
 from models.autoencoder import AutoEncoder
@@ -19,6 +20,7 @@ from models.trajectron import Trajectron
 from utils.model_registrar import ModelRegistrar
 from utils.trajectron_hypers import get_traj_hypers
 import evaluation
+from evaluation.visualization import visualize_prediction
 
 class MID():
     """
@@ -225,6 +227,13 @@ class MID():
 
                     eval_ade_batch_errors = np.hstack((eval_ade_batch_errors, batch_error_dict[node_type]['ade']))
                     eval_fde_batch_errors = np.hstack((eval_fde_batch_errors, batch_error_dict[node_type]['fde']))
+                    break
+
+                fig, ax = plt.subplots()
+                print('before', ax)
+                visualize_prediction(fig, ax, predictions_dict, scene.dt, max_hl, ph, robot_node=None, map=None)
+                print('after', ax)
+                break
 
 
 
