@@ -1,6 +1,6 @@
 ############ MID Config #############
 # Optimizer
-lr: 0.0001
+lr: 0.001
 
 # Dataset
 data_dir: processed_data_noise # The path with the directory with XXX.pkl
@@ -14,7 +14,7 @@ batch_size: 256
 eval_batch_size: 256
 k_eval: 25
 seed: 123
-eval_every: 1
+eval_every: 30
 
 # Testing
 eval_at: 90
