@@ -168,3 +168,4 @@ cython_debug/
 processed_data_noise/
 experiments/
 models_to_test/
+plots/*.png
