@@ -46,12 +46,11 @@ class VarianceSchedule(Module):
             for i in range(num_steps):
                 t1 = i/num_steps
                 t2 = (i+1) / num_steps
-                alpha_bar_t1 = math.cos((t1 + 0.008) / 1.008 * math.pi / 2) ** 2
-                alpha_bar_t2 = math.cos((t2 + 0.008) / 1.008 * math.pi / 2) ** 2
+                alpha_bar_t1 = torch.cos((t1 + cosine_s) / (1 + cosine_s) * math.pi / 2).pow(2)
+                alpha_bar_t2 = torch.cos((t2 + cosine_s) / (1 + cosine_s) * math.pi / 2).pow(2)
                 betas.append(min(1 - alpha_bar_t1/alpha_bar_t2, 0.999))
-            # timesteps = (
-            # torch.arange(num_steps + 1) / num_steps + cosine_s
-            # )
+            betas = torch.Tensor(betas)
+            # timesteps = (torch.arange(num_steps + 1) / num_steps + cosine_s)
             # alphas = timesteps / (1 + cosine_s) * math.pi / 2
             # alphas = torch.cos(alphas).pow(2)
             # alphas = alphas / alphas[0]
