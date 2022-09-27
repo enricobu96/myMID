@@ -31,7 +31,7 @@ class VarianceSchedule(Module):
         2. Pads the betas in order to match dimensions
         3. Computes alphas, alpha_logs and sigmas
     """
-    def __init__(self, num_steps, mode='linear',beta_1=1e-4, beta_T=5e-2,cosine_s=8e-3):
+    def __init__(self, num_steps, mode='linear',beta_1=1e-4, beta_T=5e-2,cosine_s=8e-3): #original cosine_s=8e-3
         super().__init__()
         assert mode in ('linear', 'cosine')
         self.num_steps = num_steps
@@ -42,20 +42,36 @@ class VarianceSchedule(Module):
         if mode == 'linear':
             betas = torch.linspace(beta_1, beta_T, steps=num_steps)
         elif mode == 'cosine':
+            print('COSINEEEE')
+            # betas = []
+            # for i in range(num_steps):
+            #     t1 = i/num_steps
+            #     t2 = (i+1) / num_steps
+            #     alpha_bar_t1 = math.cos((t1 + cosine_s) / (1 + cosine_s) * math.pi / 2) ** 2
+            #     alpha_bar_t2 = math.cos((t2 + cosine_s) / (1 + cosine_s) * math.pi / 2) ** 2
+            #     betas.append(min(1 - alpha_bar_t1/alpha_bar_t2, 0.999))
+            # betas = torch.Tensor(betas)
+
             betas = []
-            for i in range(num_steps):
-                t1 = i/num_steps
-                t2 = (i+1) / num_steps
-                alpha_bar_t1 = torch.cos((t1 + cosine_s) / (1 + cosine_s) * math.pi / 2).pow(2)
-                alpha_bar_t2 = torch.cos((t2 + cosine_s) / (1 + cosine_s) * math.pi / 2).pow(2)
-                betas.append(min(1 - alpha_bar_t1/alpha_bar_t2, 0.999))
+            f0 = math.cos(cosine_s/(1+cosine_s) * math.pi/2) ** 2
+            for i in range(1, num_steps+1):
+                tT = i/num_steps # t/T
+                ft = math.cos((tT+cosine_s)/(1+cosine_s) * math.pi/2) ** 2
+                alphat = ft/f0
+                tTm1 = (i-1)/num_steps
+                ftm1 = math.cos((tTm1+cosine_s)/(1+cosine_s) * math.pi/2) ** 2
+                alphatm1 = ftm1/f0
+                betas.append(min(1-(alphat/alphatm1), 0.999)/10) # originally without /10, just an experiment
             betas = torch.Tensor(betas)
-            # timesteps = (torch.arange(num_steps + 1) / num_steps + cosine_s)
+            print('first betas', betas)
+
+            # timesteps = (torch.arange(num_steps+1) / num_steps + cosine_s)
             # alphas = timesteps / (1 + cosine_s) * math.pi / 2
             # alphas = torch.cos(alphas).pow(2)
             # alphas = alphas / alphas[0]
             # betas = 1 - alphas[1:] / alphas[:-1]
             # betas = betas.clamp(max=0.999)
+            # print('second betas', betas)
 
         betas = torch.cat([torch.zeros([1]), betas], dim=0)     # Padding
 
