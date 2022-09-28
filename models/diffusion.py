@@ -52,16 +52,24 @@ class VarianceSchedule(Module):
             #     betas.append(min(1 - alpha_bar_t1/alpha_bar_t2, 0.999))
             # betas = torch.Tensor(betas)
 
+            """
+            Notes:
+                - numbers are just too big -> need to rescale the function to have still a cosine but with smaller values
+                - ???f0 is not needed: doing some ez math we can see that they get cancelled when dividing alpha_t by alpha_t-1
+            """
             betas = []
-            f0 = math.cos(cosine_s/(1+cosine_s) * math.pi/2) ** 2
+            # f0 = math.cos(cosine_s/(1+cosine_s) * math.pi/2) ** 2
+            f0 = math.cos(cosine_s/(1+cosine_s) * (2*math.pi/5)) ** 2
             for i in range(1, num_steps+1):
                 tT = i/num_steps # t/T
-                ft = math.cos((tT+cosine_s)/(1+cosine_s) * math.pi/2) ** 2
+                # ft = math.cos((tT+cosine_s)/(1+cosine_s) * math.pi/2) ** 2
+                ft = math.cos((tT+cosine_s)/(1+cosine_s) * (2*math.pi/5)) ** 2
                 alphat = ft/f0
                 tTm1 = (i-1)/num_steps
-                ftm1 = math.cos((tTm1+cosine_s)/(1+cosine_s) * math.pi/2) ** 2
+                # ftm1 = math.cos((tTm1+cosine_s)/(1+cosine_s) * math.pi/2) ** 2
+                ftm1 = math.cos((tTm1+cosine_s)/(1+cosine_s) * (2*math.pi/5)) ** 2
                 alphatm1 = ftm1/f0
-                betas.append(min(1-(alphat/alphatm1), 0.999)/10) # originally without /10, just an experiment
+                betas.append(min(1-(alphat/alphatm1), 0.999)) # originally without /10, just an experiment
             betas = torch.Tensor(betas)
             print('first betas', betas)
 

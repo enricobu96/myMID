@@ -9,7 +9,7 @@ data_dir: processed_data_noise # The path with the directory with XXX.pkl
 diffnet: TransformerConcatLinear # Type of diffnet
 encoder_dim: 256 # Encoder dimension
 tf_layer: 3 # Number of layers of the transformer
-epochs: 1
+epochs: 3
 batch_size: 256
 eval_batch_size: 256
 k_eval: 25
