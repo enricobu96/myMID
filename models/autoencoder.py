@@ -35,7 +35,7 @@ class AutoEncoder(Module):
             var_sched = VarianceSchedule(
                 num_steps=100,
                 beta_T=5e-2,
-                mode='cosine'
+                mode='linear'
 
             )
         )
