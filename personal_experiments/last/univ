@@ -1,0 +1,21 @@
+> Directory built!
+Loading Encoder
+> Model built!
+> Dataset built!
+> Optimizer built!
+> Everything built. Have fun :)
+----- Evaluating Scene 1/2
+----- Evaluating Scene 2/2
+Epoch 90 Best Of 20: ADE: 0.31282970204163596 FDE: 0.567499656417565
+----- Evaluating Scene 1/2
+----- Evaluating Scene 2/2
+Epoch 90 Best Of 20: ADE: 0.3138901808856287 FDE: 0.5683965661291015
+----- Evaluating Scene 1/2
+----- Evaluating Scene 2/2
+Epoch 90 Best Of 20: ADE: 0.31330968818939675 FDE: 0.5699923983125468
+----- Evaluating Scene 1/2
+----- Evaluating Scene 2/2
+Epoch 90 Best Of 20: ADE: 0.31274669578235054 FDE: 0.5683008278626862
+----- Evaluating Scene 1/2
+----- Evaluating Scene 2/2
+Epoch 90 Best Of 20: ADE: 0.3129378985301423 FDE: 0.5676745557843574
