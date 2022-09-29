@@ -20,7 +20,6 @@ from models.trajectron import Trajectron
 from utils.model_registrar import ModelRegistrar
 from utils.trajectron_hypers import get_traj_hypers
 import evaluation
-from evaluation.visualization import visualize_prediction
 
 class MID():
     """
@@ -55,35 +54,22 @@ class MID():
             - The diffusion model (DiffusionTraj), which contains the transformer model (TransformerConcatLinear) and
             the variance schedule (VarianceSchedule).
 
-    Attributes
-    ----------
-    config : dict()
-        configuration object got from config file
+    Args:
+        config: dict() : configuration object got from config file
     
-    Methods - the complete descriptions are reported on the methods
+    Methods
     -------
-    train() -> None
-        trains the model
-    eval() -> None
-        evaluates the model
-    _build() -> None
-        builds dir, optimizer, encoder, loader, model
-    _build_dir() -> None
-        builds dir
-    _build_optimizer() -> None
-        builds optimizer
-    _build_encoder_config() -> None
-        builds encoder configuration
-    _build_encoder() -> None
-        builds encoder
-    _build_model() -> None
-        builds model
-    _build_train_loader() -> None
-        builds loader for training phase
-    _build_eval_loader() -> None
-        builds loader for evaluation phase
-    _build_offline_scene_graph() -> None
-        builds offline scene graph if that hyperparameter is set to yes
+    train(): None : trains the model
+    eval(): None : evaluates the model
+    _build(): None : builds dir, optimizer, encoder, loader, model
+    _build_dir(): None : builds dir
+    _build_optimizer(): None : builds optimizer
+    _build_encoder_config(): None : builds encoder configuration
+    _build_encoder(): None : builds encoder
+    _build_model(): None : builds model
+    _build_train_loader(): None : builds loader for training phase
+    _build_eval_loader(): None : builds loader for evaluation phase
+    _build_offline_scene_graph(): None : builds offline scene graph if that hyperparameter is set to yes
     """
     def __init__(self, config):
         self.config = config
@@ -230,7 +216,6 @@ class MID():
 
                 fig, ax = plt.subplots()
                 visualize_prediction(i, j, fig, ax, predictions_dict, scene.dt, max_hl, ph, robot_node=None, map=None)
-
 
             ade = np.mean(eval_ade_batch_errors)
             fde = np.mean(eval_fde_batch_errors)

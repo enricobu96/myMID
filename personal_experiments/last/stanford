@@ -1,0 +1,59 @@
+> Directory built!
+> Model built!
+> Dataset built!
+> Optimizer built!
+> Everything built. Have fun :)
+----- Evaluating Scene 1/17
+----- Evaluating Scene 2/17
+----- Evaluating Scene 3/17
+----- Evaluating Scene 4/17
+----- Evaluating Scene 5/17
+----- Evaluating Scene 6/17
+----- Evaluating Scene 7/17
+----- Evaluating Scene 8/17
+----- Evaluating Scene 9/17
+----- Evaluating Scene 10/17
+----- Evaluating Scene 11/17
+----- Evaluating Scene 12/17
+----- Evaluating Scene 13/17
+----- Evaluating Scene 14/17
+----- Evaluating Scene 15/17
+----- Evaluating Scene 16/17
+----- Evaluating Scene 17/17
+Epoch 30 Best Of 20: ADE: 11.091548271184728 FDE: 19.349665593587964
+----- Evaluating Scene 1/17
+----- Evaluating Scene 2/17
+----- Evaluating Scene 3/17
+----- Evaluating Scene 4/17
+----- Evaluating Scene 5/17
+----- Evaluating Scene 6/17
+----- Evaluating Scene 7/17
+----- Evaluating Scene 8/17
+----- Evaluating Scene 9/17
+----- Evaluating Scene 10/17
+----- Evaluating Scene 11/17
+----- Evaluating Scene 12/17
+----- Evaluating Scene 13/17
+----- Evaluating Scene 14/17
+----- Evaluating Scene 15/17
+----- Evaluating Scene 16/17
+----- Evaluating Scene 17/17
+Epoch 60 Best Of 20: ADE: 10.859508519510333 FDE: 18.619409208824376
+----- Evaluating Scene 1/17
+----- Evaluating Scene 2/17
+----- Evaluating Scene 3/17
+----- Evaluating Scene 4/17
+----- Evaluating Scene 5/17
+----- Evaluating Scene 6/17
+----- Evaluating Scene 7/17
+----- Evaluating Scene 8/17
+----- Evaluating Scene 9/17
+----- Evaluating Scene 10/17
+----- Evaluating Scene 11/17
+----- Evaluating Scene 12/17
+----- Evaluating Scene 13/17
+----- Evaluating Scene 14/17
+----- Evaluating Scene 15/17
+----- Evaluating Scene 16/17
+----- Evaluating Scene 17/17
+Epoch 90 Best Of 20: ADE: 10.649190017221782 FDE: 18.45422763701216

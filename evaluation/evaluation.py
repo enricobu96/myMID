@@ -11,8 +11,7 @@ import pdb
 File with utilities for evaluation. This file also comes with Trajectron++ code (https://github.com/StanfordASL/Trajectron-plus-plus/),
 and only a subset of these functions is actually used.
 
-Functions
----------
+Functions: 
 compute_ade(predicted_trajs, gt_traj) -> number
     computes ade (average displacement error) confronting predicted and ground truth trajs
 compute_fde(predicted_trajs, gt_traj) -> number

@@ -52,15 +52,11 @@ class PositionalEncoding(nn.Module):
     in the sequence. The positional encodings have the same dimension as the emberddings (so that
     these can be summed).
 
-    Attributes
-    ----------
-    dropout : Dropout
-        just dropout hyperparam
+    Args:
+        dropout: Dropout : just dropout hyperparam
 
-    Methods
-    -------
-    forward(x) -> net
-        executes the forward pass. In practice, it should embeds stuff in the existing data x
+    Methods:
+        forward(x): net : executes the forward pass. In practice, it should embeds stuff in the existing data x
 
     """
     def __init__(self, d_model, dropout=0.1, max_len=5000):
