@@ -168,7 +168,7 @@ class MID():
     def eval(self):
         epoch = self.config.eval_at
 
-        for _ in range(5):
+        for j in range(5):
 
             node_type = "PEDESTRIAN"
             eval_ade_batch_errors = []
@@ -215,8 +215,7 @@ class MID():
                     eval_fde_batch_errors = np.hstack((eval_fde_batch_errors, batch_error_dict[node_type]['fde']))
 
                 fig, ax = plt.subplots()
-
-
+                visualize_prediction(i, j, fig, ax, predictions_dict, scene.dt, max_hl, ph, robot_node=None, map=None)
 
             ade = np.mean(eval_ade_batch_errors)
             fde = np.mean(eval_fde_batch_errors)
