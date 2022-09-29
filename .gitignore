@@ -169,3 +169,6 @@ processed_data_noise/
 experiments/
 models_to_test/
 plots/*.png
+docs/*
+!docs/.gitkeep
+!docs/old_slurm
