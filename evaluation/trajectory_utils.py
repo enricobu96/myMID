@@ -5,7 +5,6 @@ import pdb
 File with trajectory-specific utility function. This file also comes with Trajectron++ code (https://github.com/StanfordASL/Trajectron-plus-plus/).
 
 Functions
----------
 prediction_output_to_trajectories (prediction_output_dict, dt, max_h, ph, map,  prune_ph_to_future) -> dict(), dict(), dict()
     returns three dictionaries of dictionaries, containing information on output, history and futures. Used only internally
     for evaluation of the model.

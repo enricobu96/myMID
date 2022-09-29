@@ -13,25 +13,16 @@ class AutoEncoder(Module):
     it encodes the history path and social interaction clues into a state embedding. Then, the decoder (transformer)
     is used for the reverse diffusion process.
 
-    Attributes
-    ----------
-    config : dict()
-        configuration infos (retrieved from configuration file)
-    encoder : Trajectron
-        encoder for the model
-    diffnet : TransformerConcatLinear in this configuration
-        from diffusion.py file, read documentation from there
-    diffusion : DiffusionTraj
-        from diffusion.py, read documentation from there
+    Args:
+        config: dict() : configuration infos (retrieved from configuration file)
+        encoder: Trajectron : encoder for the model
+        diffnet: TransformerConcatLinear in this configuration : from diffusion.py file, read documentation from there
+        diffusion: DiffusionTraj : from diffusion.py, read documentation from there
 
-    Methods
-    -------
-    encode(batch, node_type) -> Tensor
-        performs encoding by getting latent representation
-    generate(batch, node_type, num_points, sample, bestof,flexibility, ret_traj) -> ?
-        generates prediction
-    get_loss(batch, node_type) -> number
-        returns loss using get_loss method from diffusion.py file
+    Methods:
+        encode(batch,node_type): Tensor : performs encoding by getting latent representation
+        generate(batch,node_type, num_points, sample, bestof,flexibility, ret_traj): ? : generates prediction
+        get_loss(batch,node_type): number : returns loss using get_loss method from diffusion.py file
     """
     def __init__(self, config, encoder):
         super().__init__()
@@ -44,7 +35,7 @@ class AutoEncoder(Module):
             var_sched = VarianceSchedule(
                 num_steps=100,
                 beta_T=5e-2,
-                mode='linear'
+                mode='cosine'
 
             )
         )

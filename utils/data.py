@@ -4,8 +4,7 @@ from torch.utils.data import DataLoader, random_split
 """
 File containing utilities for data.
 
-Functions
----------
+Functions:
 get_train_val_test_datasets(dataset, train_ratio, val_ratio) -> Dataset, Dataset, Dataset
     splits dataset into training/validation/testing sets
 get_train_val_test_loaders(dataset, train_ratio, val_ratio, train_batch_size, val_test_batch_size, num_workers) -> DataLoader, DataLoader, DataLoader

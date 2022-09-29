@@ -1,0 +1,11 @@
+> Directory built!
+> Model built!
+> Dataset built!
+> Optimizer built!
+> Everything built. Have fun :)
+----- Evaluating Scene 1/1
+Epoch 30 Best Of 20: ADE: 0.1882178806728144 FDE: 0.29498523013389755
+----- Evaluating Scene 1/1
+Epoch 60 Best Of 20: ADE: 0.18269910144914966 FDE: 0.2854558590589044
+----- Evaluating Scene 1/1
+Epoch 90 Best Of 20: ADE: 0.17987835464828617 FDE: 0.2741053473933417

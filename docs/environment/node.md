@@ -25,7 +25,7 @@ Node
 
 ## MultiNode
 
-[Show source in node.py:168](https://github.com/enricobu96/myMID/blob/main/environment/node.py#L168)
+[Show source in node.py:150](https://github.com/enricobu96/myMID/blob/main/environment/node.py#L150)
 
 Equivalent to Node class but with a list of nodes instead of single nodes.
 
@@ -43,7 +43,7 @@ class MultiNode(Node):
 
 ### MultiNode.find_non_overlapping_nodes
 
-[Show source in node.py:186](https://github.com/enricobu96/myMID/blob/main/environment/node.py#L186)
+[Show source in node.py:168](https://github.com/enricobu96/myMID/blob/main/environment/node.py#L168)
 
 Greedily finds a set of non-overlapping nodes in the provided scene.
 
@@ -61,7 +61,7 @@ def find_non_overlapping_nodes(nodes_list, min_timesteps=1) -> list:
 
 ### MultiNode().get
 
-[Show source in node.py:236](https://github.com/enricobu96/myMID/blob/main/environment/node.py#L236)
+[Show source in node.py:218](https://github.com/enricobu96/myMID/blob/main/environment/node.py#L218)
 
 #### Signature
 
@@ -72,7 +72,7 @@ def get(self, tr_scene, state, padding=np.nan) -> np.ndarray:
 
 ### MultiNode().get_all
 
-[Show source in node.py:251](https://github.com/enricobu96/myMID/blob/main/environment/node.py#L251)
+[Show source in node.py:233](https://github.com/enricobu96/myMID/blob/main/environment/node.py#L233)
 
 #### Signature
 
@@ -83,7 +83,7 @@ def get_all(self, tr_scene, state, padding=np.nan) -> np.ndarray:
 
 ### MultiNode().get_node_at_timesteps
 
-[Show source in node.py:204](https://github.com/enricobu96/myMID/blob/main/environment/node.py#L204)
+[Show source in node.py:186](https://github.com/enricobu96/myMID/blob/main/environment/node.py#L186)
 
 #### Signature
 
@@ -98,7 +98,7 @@ def get_node_at_timesteps(self, scene_ts) -> Node:
 
 ### MultiNode().history_points_at
 
-[Show source in node.py:263](https://github.com/enricobu96/myMID/blob/main/environment/node.py#L263)
+[Show source in node.py:245](https://github.com/enricobu96/myMID/blob/main/environment/node.py#L245)
 
 Number of history points in trajectory. Timestep is exclusive.
 
@@ -119,7 +119,7 @@ def history_points_at(self, ts) -> int:
 
 ### MultiNode().scene_ts_to_node_ts
 
-[Show source in node.py:215](https://github.com/enricobu96/myMID/blob/main/environment/node.py#L215)
+[Show source in node.py:197](https://github.com/enricobu96/myMID/blob/main/environment/node.py#L197)
 
 Transforms timestamp from scene into timeframe of node data.
 
@@ -146,7 +146,7 @@ def scene_ts_to_node_ts(self, scene_ts) -> (Node, np.ndarray, int, int):
 
 ### MultiNode().timesteps
 
-[Show source in node.py:274](https://github.com/enricobu96/myMID/blob/main/environment/node.py#L274)
+[Show source in node.py:256](https://github.com/enricobu96/myMID/blob/main/environment/node.py#L256)
 
 Number of available timesteps for node.
 
@@ -170,44 +170,28 @@ def timesteps(self) -> int:
 
 Node class, represents a node in a scene.
 
-Params
-------
-node_type : str
-    type of node (e.g. pedestrian)
-node_id : int
-    id of the node
-data : DoubleHeaderNumpyArray
-    array containing spatial data about node
-length : number
-    lenght of the node (unavailable for eth)
-width : number
-    width of the node (unavailable for eth)
-height : number
-    height of the node (unavailable for eth)
-first_timestep : int
-    first timestep in which it appears
-is_robot : bool
-    available in robot root mode
-description : str
-    description of the node
-frequency_multiplier : int
-    multiplier for the frequency when operating in node_freq_mult
-non_aug_node : Node
-    non-augmented node
-last_timestep : int
-    last timestep in which it appears
-forwarded_in_time_on_next_override : bool
+#### Arguments
 
-Methods
--------
-overwrite_data(data, forwared_in_time_on_next_override) -> None
-    read documentation of the method
-scene_ts_to_node_ts(scene_ts) -> (np.ndarray, int, int)
-    read documentation of the method
-history_points_at(self, ts) -> int
-    read documentation of the method
-get(self, tr_scene, state, padding=np.nan) -> np.ndarray
-    read documentation of the method
+- `node_type` - str : type of node (e.g. pedestrian)
+- `node_id` - int : id of the node
+- `data` - DoubleHeaderNumpyArray : array containing spatial data about node
+- `length` - number : lenght of the node (unavailable for eth)
+- `width` - number : width of the node (unavailable for eth)
+- `height` - number : height of the node (unavailable for eth)
+- `first_timestep` - int : first timestep in which it appears
+- `is_robot` - bool : available in robot root mode
+- `description` - str : description of the node
+- `frequency_multiplier` - int : multiplier for the frequency when operating in node_freq_mult
+- `non_aug_node` - Node : non-augmented node
+- `last_timestep` - int : last timestep in which it appears
+- `forwarded_in_time_on_next_override` - bool :
+
+#### Methods
+
+- `overwrite_data(data,forwared_in_time_on_next_override)` - None : read documentation of the method
+- `scene_ts_to_node_ts(scene_ts)` - (np.ndarray,int,int) : read documentation of the method
+- `history_points_at(self,ts)` - int : read documentation of the method
+- `get(self,tr_scene,state,padding=np.nan)` - np.ndarray : read documentation of the method
 
 #### Signature
 
@@ -232,7 +216,7 @@ class Node(object):
 
 ### Node().get
 
-[Show source in node.py:129](https://github.com/enricobu96/myMID/blob/main/environment/node.py#L129)
+[Show source in node.py:111](https://github.com/enricobu96/myMID/blob/main/environment/node.py#L111)
 
 Returns a time range of multiple properties of the node.
 
@@ -255,7 +239,7 @@ def get(self, tr_scene, state, padding=np.nan) -> np.ndarray:
 
 ### Node().history_points_at
 
-[Show source in node.py:120](https://github.com/enricobu96/myMID/blob/main/environment/node.py#L120)
+[Show source in node.py:102](https://github.com/enricobu96/myMID/blob/main/environment/node.py#L102)
 
 Number of history points in trajectory. Timestep is exclusive.
 
@@ -276,7 +260,7 @@ def history_points_at(self, ts) -> int:
 
 ### Node().last_timestep
 
-[Show source in node.py:156](https://github.com/enricobu96/myMID/blob/main/environment/node.py#L156)
+[Show source in node.py:138](https://github.com/enricobu96/myMID/blob/main/environment/node.py#L138)
 
 Nodes last timestep in the Scene.
 
@@ -294,7 +278,7 @@ def last_timestep(self) -> int:
 
 ### Node().overwrite_data
 
-[Show source in node.py:91](https://github.com/enricobu96/myMID/blob/main/environment/node.py#L91)
+[Show source in node.py:73](https://github.com/enricobu96/myMID/blob/main/environment/node.py#L73)
 
 This function hard overwrites the data matrix. When using it you have to make sure that the columns
 in the new data matrix correspond to the old structure. As well as setting first_timestep.
@@ -317,7 +301,7 @@ def overwrite_data(self, data, forward_in_time_on_next_overwrite=False):
 
 ### Node().scene_ts_to_node_ts
 
-[Show source in node.py:106](https://github.com/enricobu96/myMID/blob/main/environment/node.py#L106)
+[Show source in node.py:88](https://github.com/enricobu96/myMID/blob/main/environment/node.py#L88)
 
 Transforms timestamp from scene into timeframe of node data.
 
@@ -340,7 +324,7 @@ def scene_ts_to_node_ts(self, scene_ts) -> (np.ndarray, int, int):
 
 ### Node().timesteps
 
-[Show source in node.py:147](https://github.com/enricobu96/myMID/blob/main/environment/node.py#L147)
+[Show source in node.py:129](https://github.com/enricobu96/myMID/blob/main/environment/node.py#L129)
 
 Number of available timesteps for node.
 
