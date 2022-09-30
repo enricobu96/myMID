@@ -103,15 +103,20 @@ class MID():
                 ph = self.hyperparams['prediction_horizon']
                 max_hl = self.hyperparams['maximum_history_length']
 
-
+                """
+                min_ht = minimum history timesteps
+                max_ht = maximum history timesteps
+                min_ft = minimum future timesteps (prediction horizon)
+                max_ft = maximum future timesteps (predition horizon)
+                """
                 for i, scene in enumerate(self.eval_scenes):
                     print(f"----- Evaluating Scene {i + 1}/{len(self.eval_scenes)}")
                     for t in tqdm(range(0, scene.timesteps, 10)):
                         timesteps = np.arange(t,t+10)
                         batch = get_timesteps_data(env=self.eval_env, scene=scene, t=timesteps, node_type=node_type, state=self.hyperparams['state'],
                                        pred_state=self.hyperparams['pred_state'], edge_types=self.eval_env.get_edge_types(),
-                                       min_ht=7, max_ht=self.hyperparams['maximum_history_length'], min_ft=12,
-                                       max_ft=12, hyperparams=self.hyperparams)
+                                       min_ht=5, max_ht=5, min_ft=30,
+                                       max_ft=30, hyperparams=self.hyperparams)
                         if batch is None:
                             continue
                         test_batch = batch[0]
@@ -128,7 +133,7 @@ class MID():
 
                         batch_error_dict = evaluation.compute_batch_statistics(predictions_dict,
                                                                                scene.dt,
-                                                                               max_hl=max_hl,
+                                                                               max_hl=5,
                                                                                ph=ph,
                                                                                node_type_enum=self.eval_env.NodeType,
                                                                                kde=False,
