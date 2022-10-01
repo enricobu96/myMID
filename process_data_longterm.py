@@ -17,7 +17,7 @@ pred_indices = [2, 3]
 state_dim = 6
 frame_diff = 10
 desired_frame_diff = 1
-dt = 0.4
+dt = 1
 
 standardization = {
     'PEDESTRIAN': {

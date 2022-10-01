@@ -115,8 +115,8 @@ class MID():
                         timesteps = np.arange(t,t+10)
                         batch = get_timesteps_data(env=self.eval_env, scene=scene, t=timesteps, node_type=node_type, state=self.hyperparams['state'],
                                        pred_state=self.hyperparams['pred_state'], edge_types=self.eval_env.get_edge_types(),
-                                       min_ht=7, max_ht=self.hyperparams['maximum_history_length'], min_ft=12,
-                                       max_ft=12, hyperparams=self.hyperparams)
+                                       min_ht=1, max_ht=self.hyperparams['maximum_history_length'], min_ft=self.hyperparams['prediction_horizon'],
+                                       max_ft=self.hyperparams['prediction_horizon'], hyperparams=self.hyperparams)
                         if batch is None:
                             continue
                         test_batch = batch[0]
@@ -376,7 +376,7 @@ class MID():
                                            scene_freq_mult=self.hyperparams['scene_freq_mult_train'],
                                            node_freq_mult=self.hyperparams['node_freq_mult_train'],
                                            hyperparams=self.hyperparams,
-                                           min_history_timesteps=1,
+                                           min_history_timesteps=5,
                                            min_future_timesteps=self.hyperparams['prediction_horizon'],
                                            return_robot=not self.config.incl_robot_node)
         self.train_data_loader = dict()
