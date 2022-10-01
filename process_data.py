@@ -16,6 +16,8 @@ from environment import Environment, Scene, Node, derivative_of
 
 # For debug reasons
 from pprint import pprint
+import warnings
+warnings.filterwarnings('ignore')
 
 desired_max_time = 100
 pred_indices = [2, 3]

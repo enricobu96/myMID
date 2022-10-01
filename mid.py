@@ -115,8 +115,8 @@ class MID():
                         timesteps = np.arange(t,t+10)
                         batch = get_timesteps_data(env=self.eval_env, scene=scene, t=timesteps, node_type=node_type, state=self.hyperparams['state'],
                                        pred_state=self.hyperparams['pred_state'], edge_types=self.eval_env.get_edge_types(),
-                                       min_ht=5, max_ht=5, min_ft=30,
-                                       max_ft=30, hyperparams=self.hyperparams)
+                                       min_ht=7, max_ht=self.hyperparams['maximum_history_length'], min_ft=12,
+                                       max_ft=12, hyperparams=self.hyperparams)
                         if batch is None:
                             continue
                         test_batch = batch[0]
