@@ -378,7 +378,7 @@ class MID():
                                            scene_freq_mult=self.hyperparams['scene_freq_mult_train'],
                                            node_freq_mult=self.hyperparams['node_freq_mult_train'],
                                            hyperparams=self.hyperparams,
-                                           min_history_timesteps=5,
+                                           min_history_timesteps=1,
                                            min_future_timesteps=self.hyperparams['prediction_horizon'],
                                            return_robot=not self.config.incl_robot_node)
         self.train_data_loader = dict()
