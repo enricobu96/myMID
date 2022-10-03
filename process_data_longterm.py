@@ -10,8 +10,6 @@ from pprint import pprint
 import warnings
 warnings.filterwarnings('ignore')
 
-pd.set_option('display.max_rows', 1000)
-
 desired_max_time = 100
 pred_indices = [2, 3]
 state_dim = 6
@@ -139,8 +137,7 @@ for data_class in ["train", "test"]:
         data['trackId'] = pd.to_numeric(data['trackId'], downcast='integer')
 
         data['frame'] = data['frame'] // 30
-
-        data['frame'] -= data['frame'].min()
+        # data['frame'] -= data['frame'].min()
 
         data['node_type'] = 'PEDESTRIAN'
         data['node_id'] = data['trackId'].astype(str)
@@ -150,8 +147,8 @@ for data_class in ["train", "test"]:
         data['y'] = data['y']/50
 
         # Mean Position
-        data['x'] = data['x'] - data['x'].mean()
-        data['y'] = data['y'] - data['y'].mean()
+        # data['x'] = data['x'] - data['x'].mean()
+        # data['y'] = data['y'] - data['y'].mean()
 
         max_timesteps = data['frame'].max()
 
@@ -162,6 +159,14 @@ for data_class in ["train", "test"]:
                 nodes_df = data[data['node_id'] == node_id]
                 for meta_id in pd.unique(nodes_df['metaId']):
                     node_df = nodes_df[nodes_df['metaId'] == meta_id]
+
+                    # Mean position
+                    node_df['x'] -= node_df['x'].mean()
+                    node_df['y'] -= node_df['y'].mean()
+
+                    # Normalization of frames
+                    node_df['frame'] -= node_df['frame'].min()
+
                     if len(node_df) > 1:
                         assert np.all(np.diff(node_df['frame']) == 1)                         
                         node_values = node_df[['x', 'y']].values
@@ -199,6 +204,7 @@ for data_class in ["train", "test"]:
             print(scene)
             scenes.append(scene)
     env.scenes = scenes
+    print(len(scenes))
 
     if len(scenes) > 0:
         with open(data_out_path, 'wb') as f:

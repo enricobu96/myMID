@@ -101,6 +101,7 @@ class MID():
                 eval_fde_batch_errors = []
 
                 ph = self.hyperparams['prediction_horizon']
+                min_hl = self.hyperparams['minimum_history_length']
                 max_hl = self.hyperparams['maximum_history_length']
 
                 """
@@ -113,10 +114,10 @@ class MID():
                     print(f"----- Evaluating Scene {i + 1}/{len(self.eval_scenes)}")
                     for t in tqdm(range(0, scene.timesteps, 10)):
                         timesteps = np.arange(t,t+10)
+                        print(timesteps)
                         batch = get_timesteps_data(env=self.eval_env, scene=scene, t=timesteps, node_type=node_type, state=self.hyperparams['state'],
                                        pred_state=self.hyperparams['pred_state'], edge_types=self.eval_env.get_edge_types(),
-                                       min_ht=1, max_ht=self.hyperparams['maximum_history_length'], min_ft=self.hyperparams['prediction_horizon'],
-                                       max_ft=self.hyperparams['prediction_horizon'], hyperparams=self.hyperparams)
+                                       min_ht=min_hl, max_ht=max_hl, min_ft=2, max_ft=ph, hyperparams=self.hyperparams)
                         if batch is None:
                             continue
                         test_batch = batch[0]
@@ -186,10 +187,11 @@ class MID():
                 print(f"----- Evaluating Scene {i + 1}/{len(self.eval_scenes)}")
                 for t in tqdm(range(0, scene.timesteps, 10)):
                     timesteps = np.arange(t,t+10)
-                    batch = get_timesteps_data(env=self.eval_env, scene=scene, t=timesteps, node_type=node_type, state=self.hyperparams['state'],
-                                   pred_state=self.hyperparams['pred_state'], edge_types=self.eval_env.get_edge_types(),
-                                   min_ht=7, max_ht=self.hyperparams['maximum_history_length'], min_ft=12,
-                                   max_ft=12, hyperparams=self.hyperparams)
+                    batch = get_timesteps_data(env=self.eval_env, scene=scene, t=timesteps,
+                                            node_type=node_type, state=self.hyperparams['state'],
+                                            pred_state=self.hyperparams['pred_state'], edge_types=self.eval_env.get_edge_types(),
+                                            min_ht=7, max_ht=self.hyperparams['maximum_history_length'], min_ft=12,
+                                            max_ft=12, hyperparams=self.hyperparams)
                     if batch is None:
                         continue
                     test_batch = batch[0]
