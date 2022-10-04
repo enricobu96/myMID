@@ -6,6 +6,54 @@ import torch.nn as nn
 from .common import *
 import pdb
 
+def two_fifth_pi_cos_squared(cosine_s, num_steps):
+    betas = []
+    f0 = math.cos(cosine_s/(1+cosine_s) * (2*math.pi/5)) ** 2
+    for i in range(1, num_steps+1):
+        tT = i/num_steps
+        ft = math.cos((tT+cosine_s)/(1+cosine_s) * (2*math.pi/5)) ** 2
+        alphat = ft/f0
+        tTm1 = (i-1)/num_steps
+        ftm1 = math.cos((tTm1+cosine_s)/(1+cosine_s) * (2*math.pi/5)) ** 2
+        alphatm1 = ftm1/f0
+        betas.append(min(1-(alphat/alphatm1), 0.999))
+    betas = torch.Tensor(betas)
+    return betas
+
+def piecewise_cos_inv(cosine_s, num_steps):
+    betas = [0]
+    a = 2
+    for i in range(1, num_steps+1):
+        c_prev = math.cos(((betas[i-1]/num_steps + cosine_s)/(1+cosine_s))*math.pi/a)
+        acos = np.clip((1-i)*c_prev, -1, 1)
+        betas.append((math.acos(acos)*(a/math.pi)*(1+cosine_s) - cosine_s)*num_steps)
+    betas = torch.Tensor(betas)
+    return betas
+
+def clipped_two_fifth(cosine_s, num_steps):
+    betas = []
+    clips = []
+    for i in range(-num_steps//2, num_steps//2):
+        f = (1/(-np.sign(i)*(num_steps//2)))*i+1
+        clips.append(f/10)
+    clips = np.nan_to_num(clips, nan=1)
+    print('clips', clips)
+    f0 = math.cos(cosine_s/(1+cosine_s) * (2*math.pi/5)) ** 2
+    for i in range(1, num_steps+1):
+        tT = i/num_steps
+        ft = math.cos((tT+cosine_s)/(1+cosine_s) * (2*math.pi/5)) ** 2
+        alphat = ft/f0
+        tTm1 = (i-1)/num_steps
+        ftm1 = math.cos((tTm1+cosine_s)/(1+cosine_s) * (2*math.pi/5)) ** 2
+        alphatm1 = ftm1/f0
+        betas.append(min(1-(alphat/alphatm1)+clips[i-1], 0.999))
+    betas = torch.Tensor(betas)
+    return betas
+
+def tangent_inv(cosine_s, num_steps):
+    pass
+
+
 class VarianceSchedule(Module):
     """
     Class representing the variance schedule.
@@ -42,44 +90,13 @@ class VarianceSchedule(Module):
         if mode == 'linear':
             betas = torch.linspace(beta_1, beta_T, steps=num_steps)
         elif mode == 'cosine':
-            print('COSINEEEE')
-            # betas = []
-            # for i in range(num_steps):
-            #     t1 = i/num_steps
-            #     t2 = (i+1) / num_steps
-            #     alpha_bar_t1 = math.cos((t1 + cosine_s) / (1 + cosine_s) * math.pi / 2) ** 2
-            #     alpha_bar_t2 = math.cos((t2 + cosine_s) / (1 + cosine_s) * math.pi / 2) ** 2
-            #     betas.append(min(1 - alpha_bar_t1/alpha_bar_t2, 0.999))
-            # betas = torch.Tensor(betas)
+            print('COSINE SCHEDULE')
+            # betas = two_fifth_pi_cos_squared(cosine_s, num_steps)
+            # betas = piecewise_cos_inv(cosine_s, num_steps)
+            # betas = tangent_inv(cosine_s, num_steps)
+            betas = clipped_two_fifth(cosine_s, num_steps)
 
-            """
-            Notes:
-                - numbers are just too big -> need to rescale the function to have still a cosine but with smaller values
-                - ???f0 is not needed: doing some ez math we can see that they get cancelled when dividing alpha_t by alpha_t-1
-            """
-            betas = []
-            # f0 = math.cos(cosine_s/(1+cosine_s) * math.pi/2) ** 2
-            f0 = math.cos(cosine_s/(1+cosine_s) * (2*math.pi/5)) ** 2
-            for i in range(1, num_steps+1):
-                tT = i/num_steps # t/T
-                # ft = math.cos((tT+cosine_s)/(1+cosine_s) * math.pi/2) ** 2
-                ft = math.cos((tT+cosine_s)/(1+cosine_s) * (2*math.pi/5)) ** 2
-                alphat = ft/f0
-                tTm1 = (i-1)/num_steps
-                # ftm1 = math.cos((tTm1+cosine_s)/(1+cosine_s) * math.pi/2) ** 2
-                ftm1 = math.cos((tTm1+cosine_s)/(1+cosine_s) * (2*math.pi/5)) ** 2
-                alphatm1 = ftm1/f0
-                betas.append(min(1-(alphat/alphatm1), 0.999)) # originally without /10, just an experiment
-            betas = torch.Tensor(betas)
-            print('first betas', betas)
-
-            # timesteps = (torch.arange(num_steps+1) / num_steps + cosine_s)
-            # alphas = timesteps / (1 + cosine_s) * math.pi / 2
-            # alphas = torch.cos(alphas).pow(2)
-            # alphas = alphas / alphas[0]
-            # betas = 1 - alphas[1:] / alphas[:-1]
-            # betas = betas.clamp(max=0.999)
-            # print('second betas', betas)
+            print(betas)
 
         betas = torch.cat([torch.zeros([1]), betas], dim=0)     # Padding
 
