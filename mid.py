@@ -114,7 +114,6 @@ class MID():
                     print(f"----- Evaluating Scene {i + 1}/{len(self.eval_scenes)}")
                     for t in tqdm(range(0, scene.timesteps, 10)):
                         timesteps = np.arange(t,t+10)
-                        print(timesteps)
                         batch = get_timesteps_data(env=self.eval_env, scene=scene, t=timesteps, node_type=node_type, state=self.hyperparams['state'],
                                        pred_state=self.hyperparams['pred_state'], edge_types=self.eval_env.get_edge_types(),
                                        min_ht=min_hl, max_ht=max_hl, min_ft=2, max_ft=ph, hyperparams=self.hyperparams)
@@ -123,7 +122,7 @@ class MID():
                         test_batch = batch[0]
                         nodes = batch[1]
                         timesteps_o = batch[2]
-                        traj_pred = self.model.generate(test_batch, node_type, num_points=12, sample=20,bestof=True) # B * 20 * 12 * 2
+                        traj_pred = self.model.generate(test_batch, node_type, num_points=self.hyperparams['prediction_horizon'], sample=20,bestof=True) # B * 20 * 12 * 2
 
                         predictions = traj_pred
                         predictions_dict = {}

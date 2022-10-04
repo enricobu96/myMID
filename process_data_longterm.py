@@ -135,12 +135,14 @@ for data_class in ["train", "test"]:
     for scene, data in group:
         data['frame'] = pd.to_numeric(data['frame'], downcast='integer')
         data['trackId'] = pd.to_numeric(data['trackId'], downcast='integer')
+        data['metaId'] = pd.to_numeric(data['metaId'], downcast='integer')
 
         data['frame'] = data['frame'] // 30
         # data['frame'] -= data['frame'].min()
 
         data['node_type'] = 'PEDESTRIAN'
         data['node_id'] = data['trackId'].astype(str)
+        data['meta_id'] = data['metaId'].astype(str)
 
         # apply data scale as same as PECnet
         data['x'] = data['x']/50
@@ -157,8 +159,8 @@ for data_class in ["train", "test"]:
             n=0
             for node_id in pd.unique(data['node_id']):
                 nodes_df = data[data['node_id'] == node_id]
-                for meta_id in pd.unique(nodes_df['metaId']):
-                    node_df = nodes_df[nodes_df['metaId'] == meta_id]
+                for meta_id in pd.unique(nodes_df['meta_id']):
+                    node_df = nodes_df[nodes_df['meta_id'] == meta_id]
 
                     # Mean position
                     node_df['x'] -= node_df['x'].mean()
