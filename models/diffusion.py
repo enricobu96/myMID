@@ -53,6 +53,17 @@ def clipped_two_fifth(cosine_s, num_steps):
 def tangent_inv(cosine_s, num_steps):
     pass
 
+def sigmoid(cosine_s, num_steps):
+    lambd = 6
+    eps = 0.05
+    s = lambda x : 1/(1+math.exp(-lambd*(x-eps)))
+    betas = []
+    for i in range(-num_steps//2, num_steps//2):
+        betas.append(s(i/(num_steps))/10)
+    betas = torch.Tensor(betas)
+    return betas
+
+
 
 class VarianceSchedule(Module):
     """
@@ -94,8 +105,8 @@ class VarianceSchedule(Module):
             # betas = two_fifth_pi_cos_squared(cosine_s, num_steps)
             # betas = piecewise_cos_inv(cosine_s, num_steps)
             # betas = tangent_inv(cosine_s, num_steps)
-            betas = clipped_two_fifth(cosine_s, num_steps)
-
+            # betas = clipped_two_fifth(cosine_s, num_steps)
+            betas = sigmoid(cosine_s, num_steps)
             print(betas)
 
         betas = torch.cat([torch.zeros([1]), betas], dim=0)     # Padding
