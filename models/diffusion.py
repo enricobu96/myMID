@@ -56,13 +56,24 @@ def tangent_inv(cosine_s, num_steps):
 def sigmoid(cosine_s, num_steps):
     lambd = 6
     eps = 0.05
+    norm = 10
     s = lambda x : 1/(1+math.exp(-lambd*(x-eps)))
     betas = []
     for i in range(-num_steps//2, num_steps//2):
-        betas.append(s(i/(num_steps))/10)
+        betas.append(s(i/(num_steps))/norm)
     betas = torch.Tensor(betas)
     return betas
 
+def sigmoid_2(cosine_s, num_steps):
+    lambd = 16
+    eps = .7
+    norm = 16
+    s = lambda x : 1/(1+math.exp(-lambd*(x-eps)))
+    betas = []
+    for i in range(-num_steps//2, num_steps//2):
+        betas.append(s(i/(num_steps))/norm)
+    betas = torch.Tensor(betas)
+    return betas
 
 
 class VarianceSchedule(Module):
@@ -106,7 +117,7 @@ class VarianceSchedule(Module):
             # betas = piecewise_cos_inv(cosine_s, num_steps)
             # betas = tangent_inv(cosine_s, num_steps)
             # betas = clipped_two_fifth(cosine_s, num_steps)
-            betas = sigmoid(cosine_s, num_steps)
+            betas = sigmoid_2(cosine_s, num_steps)
             print(betas)
 
         betas = torch.cat([torch.zeros([1]), betas], dim=0)     # Padding
