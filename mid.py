@@ -133,7 +133,7 @@ class MID():
 
                         batch_error_dict = evaluation.compute_batch_statistics(predictions_dict,
                                                                                scene.dt,
-                                                                               max_hl=5,
+                                                                               max_hl=max_hl,
                                                                                ph=ph,
                                                                                node_type_enum=self.eval_env.NodeType,
                                                                                kde=False,
