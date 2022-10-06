@@ -1,0 +1,142 @@
+wandb_version: 1
+
+_wandb:
+  desc: null
+  value:
+    cli_version: 0.13.3
+    framework: torch
+    is_jupyter_run: false
+    is_kaggle_kernel: false
+    python_version: 3.10.6
+    start_time: 1664963613.139611
+    t:
+      1:
+      - 1
+      - 55
+      3:
+      - 16
+      - 23
+      4: 3.10.6
+      5: 0.13.3
+      8:
+      - 8
+augment:
+  desc: null
+  value: true
+batch_size:
+  desc: null
+  value: 256
+conf:
+  desc: null
+  value: None
+config:
+  desc: null
+  value: configs/viz.yaml
+data_dir:
+  desc: null
+  value: processed_data_noise
+dataset:
+  desc: null
+  value: eth
+debug:
+  desc: null
+  value: false
+device:
+  desc: null
+  value: cuda
+diffnet:
+  desc: null
+  value: TransformerConcatLinear
+dynamic_edges:
+  desc: null
+  value: true
+edge_addition_filter:
+  desc: null
+  value:
+  - 0.25
+  - 0.5
+  - 0.75
+  - 1.0
+edge_influence_combine_method:
+  desc: null
+  value: attention
+edge_removal_filter:
+  desc: null
+  value:
+  - 1.0
+  - 0.0
+edge_state_combine_method:
+  desc: null
+  value: sum
+encoder_dim:
+  desc: null
+  value: 256
+epochs:
+  desc: null
+  value: 1
+eval_at:
+  desc: null
+  value: 90
+eval_batch_size:
+  desc: null
+  value: 256
+eval_device:
+  desc: null
+  value: cuda
+eval_every:
+  desc: null
+  value: 1
+eval_mode:
+  desc: null
+  value: false
+exp_name:
+  desc: null
+  value: viz
+incl_robot_node:
+  desc: null
+  value: false
+k_eval:
+  desc: null
+  value: 25
+lr:
+  desc: null
+  value: 0.001
+map_encoding:
+  desc: null
+  value: false
+no_edge_encoding:
+  desc: null
+  value: false
+node_freq_mult_eval:
+  desc: null
+  value: false
+node_freq_mult_train:
+  desc: null
+  value: false
+offline_scene_graph:
+  desc: null
+  value: true
+override_attention_radius:
+  desc: null
+  value: []
+preprocess_workers:
+  desc: null
+  value: 0
+scene_freq_mult_eval:
+  desc: null
+  value: false
+scene_freq_mult_train:
+  desc: null
+  value: false
+scene_freq_mult_viz:
+  desc: null
+  value: false
+seed:
+  desc: null
+  value: 123
+tf_layer:
+  desc: null
+  value: 3
+use_wandb:
+  desc: null
+  value: true

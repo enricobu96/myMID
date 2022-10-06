@@ -1,0 +1,27 @@
+{
+    "os": "Linux-4.15.0-189-generic-x86_64-with-glibc2.27",
+    "python": "3.10.6",
+    "heartbeatAt": "2022-10-05T09:58:49.661219",
+    "startedAt": "2022-10-05T09:58:49.172280",
+    "docker": null,
+    "cpu_count": 8,
+    "cuda": null,
+    "args": [
+        "--config",
+        "configs/viz.yaml",
+        "--dataset",
+        "eth"
+    ],
+    "state": "running",
+    "program": "/server2/2/2015/burattoe/Repository/VIZ/myMID/main.py",
+    "codePath": "main.py",
+    "git": {
+        "remote": "git@github.com:enricobu96/myMID.git",
+        "commit": "a03735fe2944310540b733de808a06892d9904d4"
+    },
+    "email": "enrico.buratto.1@studenti.unipd.it",
+    "root": "/server2/2/2015/burattoe/Repository/VIZ/myMID",
+    "host": "t97",
+    "username": "burattoe",
+    "executable": "/home/2/2015/burattoe/.localpython/bin/python3.10"
+}

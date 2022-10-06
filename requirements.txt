@@ -9,3 +9,4 @@ easydict
 scipy
 tqdm
 seaborn
+wandb

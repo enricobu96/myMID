@@ -20,6 +20,7 @@ from models.trajectron import Trajectron
 from utils.model_registrar import ModelRegistrar
 from utils.trajectron_hypers import get_traj_hypers
 import evaluation
+import wandb
 
 class MID():
     """
@@ -80,7 +81,15 @@ class MID():
         """
         Method for model training
         """
+        if wandb.run is None and self.config.use_wandb:
+            wandb.init(settings=wandb.Settings(start_method="thread"),
+                       project="myMID", config=self.config,
+                       group=self.config['dataset'],
+                       job_type=self.config['dataset'],
+                       tags=None, name=None)
+
         for epoch in range(1, self.config.epochs + 1):
+            train_losses = []
             self.train_dataset.augment = self.config.augment
             for node_type, data_loader in self.train_data_loader.items():
                 pbar = tqdm(data_loader, ncols=80)
@@ -88,6 +97,7 @@ class MID():
 
                     self.optimizer.zero_grad()
                     train_loss = self.model.get_loss(batch, node_type)
+                    train_losses.append(train_loss)
                     pbar.set_description(f"Epoch {epoch}, {node_type} MSE: {train_loss.item():.2f}")
                     train_loss.backward()
                     self.optimizer.step()
@@ -139,8 +149,6 @@ class MID():
                         eval_ade_batch_errors = np.hstack((eval_ade_batch_errors, batch_error_dict[node_type]['ade']))
                         eval_fde_batch_errors = np.hstack((eval_fde_batch_errors, batch_error_dict[node_type]['fde']))
 
-
-
                 ade = np.mean(eval_ade_batch_errors)
                 fde = np.mean(eval_fde_batch_errors)
 
@@ -150,6 +158,14 @@ class MID():
                 elif self.config.dataset == "sdd":
                     ade = ade * 50
                     fde = fde * 50
+                
+                learning_rate = self.optimizer.param_groups[0]['lr']
+                train_metrics = [ade, fde]
+
+                if self.config.use_wandb:
+                    wandb.log({'learning_rate': learning_rate}, step=epoch)
+                    wandb.log(train_losses, step=epoch)
+                    wandb.log(train_metrics, step=epoch)
 
 
                 print(f"Epoch {epoch} Best Of 20: ADE: {ade} FDE: {fde}")
