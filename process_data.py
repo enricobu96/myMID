@@ -117,108 +117,108 @@ maybe_makedirs(data_folder_name)
 """
 Process data for ETH-UCY dataset.
 """
-data_columns = pd.MultiIndex.from_product([['position', 'velocity', 'acceleration'], ['x', 'y']])
-for desired_source in ['eth', 'hotel', 'univ', 'zara1', 'zara2']:
-    for data_class in ['train', 'val', 'test']:
-        # Creates Environment object. See documentation for Environment class.
-        env = Environment(node_type_list=['PEDESTRIAN'], standardization=standardization)
-        attention_radius = dict()
-        attention_radius[(env.NodeType.PEDESTRIAN, env.NodeType.PEDESTRIAN)] = 3.0
-        env.attention_radius = attention_radius
+# data_columns = pd.MultiIndex.from_product([['position', 'velocity', 'acceleration'], ['x', 'y']])
+# for desired_source in ['eth', 'hotel', 'univ', 'zara1', 'zara2']:
+#     for data_class in ['train', 'val', 'test']:
+#         # Creates Environment object. See documentation for Environment class.
+#         env = Environment(node_type_list=['PEDESTRIAN'], standardization=standardization)
+#         attention_radius = dict()
+#         attention_radius[(env.NodeType.PEDESTRIAN, env.NodeType.PEDESTRIAN)] = 3.0
+#         env.attention_radius = attention_radius
 
-        scenes = []
-        data_dict_path = os.path.join(data_folder_name, '_'.join([desired_source, data_class]) + '.pkl')
+#         scenes = []
+#         data_dict_path = os.path.join(data_folder_name, '_'.join([desired_source, data_class]) + '.pkl')
 
-        for subdir, dirs, files in os.walk(os.path.join('raw_data', desired_source, data_class)):
-            for file in files:
-                if file.endswith('.txt'):
-                    # Reads input txt file and loads it into dataframe
-                    input_data_dict = dict()
-                    full_data_path = os.path.join(subdir, file)
-                    print('At', full_data_path)
+#         for subdir, dirs, files in os.walk(os.path.join('raw_data', desired_source, data_class)):
+#             for file in files:
+#                 if file.endswith('.txt'):
+#                     # Reads input txt file and loads it into dataframe
+#                     input_data_dict = dict()
+#                     full_data_path = os.path.join(subdir, file)
+#                     print('At', full_data_path)
 
-                    data = pd.read_csv(full_data_path, sep='\t', index_col=False, header=None)
-                    data.columns = ['frame_id', 'track_id', 'pos_x', 'pos_y']
-                    data['frame_id'] = pd.to_numeric(data['frame_id'], downcast='integer')
-                    data['track_id'] = pd.to_numeric(data['track_id'], downcast='integer')
+#                     data = pd.read_csv(full_data_path, sep='\t', index_col=False, header=None)
+#                     data.columns = ['frame_id', 'track_id', 'pos_x', 'pos_y']
+#                     data['frame_id'] = pd.to_numeric(data['frame_id'], downcast='integer')
+#                     data['track_id'] = pd.to_numeric(data['track_id'], downcast='integer')
 
-                    data['frame_id'] = data['frame_id'] // 10
+#                     data['frame_id'] = data['frame_id'] // 10
 
-                    data['frame_id'] -= data['frame_id'].min()
+#                     data['frame_id'] -= data['frame_id'].min()
 
-                    data['node_type'] = 'PEDESTRIAN'
-                    data['node_id'] = data['track_id'].astype(str)
+#                     data['node_type'] = 'PEDESTRIAN'
+#                     data['node_id'] = data['track_id'].astype(str)
 
-                    data.sort_values('frame_id', inplace=True)
+#                     data.sort_values('frame_id', inplace=True)
 
-                    # Standardizes positions for ADE and FDE evaluation, which are then multiplied by 0.6
-                    if desired_source == "eth" and data_class == "test":
-                        data['pos_x'] = data['pos_x'] * 0.6
-                        data['pos_y'] = data['pos_y'] * 0.6
+#                     # Standardizes positions for ADE and FDE evaluation, which are then multiplied by 0.6
+#                     if desired_source == "eth" and data_class == "test":
+#                         data['pos_x'] = data['pos_x'] * 0.6
+#                         data['pos_y'] = data['pos_y'] * 0.6
 
-                    # if data_class == "train":
-                    #     #data_gauss = data.copy(deep=True)
-                    #     data['pos_x'] = data['pos_x'] + 2 * np.random.normal(0,1)
-                    #     data['pos_y'] = data['pos_y'] + 2 * np.random.normal(0,1)
+#                     # if data_class == "train":
+#                     #     #data_gauss = data.copy(deep=True)
+#                     #     data['pos_x'] = data['pos_x'] + 2 * np.random.normal(0,1)
+#                     #     data['pos_y'] = data['pos_y'] + 2 * np.random.normal(0,1)
 
-                        #data = pd.concat([data, data_gauss])
+#                         #data = pd.concat([data, data_gauss])
 
-                    data['pos_x'] = data['pos_x'] - data['pos_x'].mean()
-                    data['pos_y'] = data['pos_y'] - data['pos_y'].mean()
+#                     data['pos_x'] = data['pos_x'] - data['pos_x'].mean()
+#                     data['pos_y'] = data['pos_y'] - data['pos_y'].mean()
 
-                    max_timesteps = data['frame_id'].max()
+#                     max_timesteps = data['frame_id'].max()
 
-                    # Creates the scene
-                    scene = Scene(timesteps=max_timesteps+1, dt=dt, name=desired_source + "_" + data_class, aug_func=augment if data_class == 'train' else None)
+#                     # Creates the scene
+#                     scene = Scene(timesteps=max_timesteps+1, dt=dt, name=desired_source + "_" + data_class, aug_func=augment if data_class == 'train' else None)
 
-                    # For each node
-                    for node_id in pd.unique(data['node_id']):
+#                     # For each node
+#                     for node_id in pd.unique(data['node_id']):
 
-                        node_df = data[data['node_id'] == node_id]
+#                         node_df = data[data['node_id'] == node_id]
 
-                        node_values = node_df[['pos_x', 'pos_y']].values
+#                         node_values = node_df[['pos_x', 'pos_y']].values
 
-                        if node_values.shape[0] < 2:
-                            continue
+#                         if node_values.shape[0] < 2:
+#                             continue
 
-                        new_first_idx = node_df['frame_id'].iloc[0]
+#                         new_first_idx = node_df['frame_id'].iloc[0]
 
-                        # Get x,y positions and compute velocity and acceleration derivating them from space
-                        x = node_values[:, 0]
-                        y = node_values[:, 1]
-                        vx = derivative_of(x, scene.dt)
-                        vy = derivative_of(y, scene.dt)
-                        ax = derivative_of(vx, scene.dt)
-                        ay = derivative_of(vy, scene.dt)
+#                         # Get x,y positions and compute velocity and acceleration derivating them from space
+#                         x = node_values[:, 0]
+#                         y = node_values[:, 1]
+#                         vx = derivative_of(x, scene.dt)
+#                         vy = derivative_of(y, scene.dt)
+#                         ax = derivative_of(vx, scene.dt)
+#                         ay = derivative_of(vy, scene.dt)
 
-                        data_dict = {('position', 'x'): x,
-                                     ('position', 'y'): y,
-                                     ('velocity', 'x'): vx,
-                                     ('velocity', 'y'): vy,
-                                     ('acceleration', 'x'): ax,
-                                     ('acceleration', 'y'): ay}
+#                         data_dict = {('position', 'x'): x,
+#                                      ('position', 'y'): y,
+#                                      ('velocity', 'x'): vx,
+#                                      ('velocity', 'y'): vy,
+#                                      ('acceleration', 'x'): ax,
+#                                      ('acceleration', 'y'): ay}
 
-                        node_data = pd.DataFrame(data_dict, columns=data_columns)
-                        node = Node(node_type=env.NodeType.PEDESTRIAN, node_id=node_id, data=node_data)
-                        node.first_timestep = new_first_idx
+#                         node_data = pd.DataFrame(data_dict, columns=data_columns)
+#                         node = Node(node_type=env.NodeType.PEDESTRIAN, node_id=node_id, data=node_data)
+#                         node.first_timestep = new_first_idx
 
-                        scene.nodes.append(node)
-                    if data_class == 'train':
-                        scene.augmented = list()
-                        angles = np.arange(0, 360, 15) if data_class == 'train' else [0]
-                        for angle in angles:
-                            scene.augmented.append(augment_scene(scene, angle))
+#                         scene.nodes.append(node)
+#                     if data_class == 'train':
+#                         scene.augmented = list()
+#                         angles = np.arange(0, 360, 15) if data_class == 'train' else [0]
+#                         for angle in angles:
+#                             scene.augmented.append(augment_scene(scene, angle))
 
-                    print(scene)
-                    scenes.append(scene)
-        print(f'Processed {len(scenes):.2f} scene for data class {data_class}')
+#                     print(scene)
+#                     scenes.append(scene)
+#         print(f'Processed {len(scenes):.2f} scene for data class {data_class}')
 
-        env.scenes = scenes
+#         env.scenes = scenes
 
-        if len(scenes) > 0:
-            with open(data_dict_path, 'wb') as f:
-                dill.dump(env, f, protocol=dill.HIGHEST_PROTOCOL)
-exit()
+#         if len(scenes) > 0:
+#             with open(data_dict_path, 'wb') as f:
+#                 dill.dump(env, f, protocol=dill.HIGHEST_PROTOCOL)
+# exit()
 # Process Stanford Drone. Data obtained from Y-Net github repo
 data_columns = pd.MultiIndex.from_product([['position', 'velocity', 'acceleration'], ['x', 'y']])
 

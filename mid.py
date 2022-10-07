@@ -152,6 +152,22 @@ class MID():
                         eval_ade_batch_errors = np.hstack((eval_ade_batch_errors, batch_error_dict[node_type]['ade']))
                         eval_fde_batch_errors = np.hstack((eval_fde_batch_errors, batch_error_dict[node_type]['fde']))
 
+                    """
+                    WANDB VISUALIZATION
+                    """
+                    if self.config.use_wandb:
+                        fig, ax = plt.subplots(figsize=(12, 6))
+                        fig, ax = plot_wandb(fig, ax, predictions_dict, scene.dt, max_hl, ph, map=None)
+                        plt.legend(loc='best')
+                        try:
+                            os.makedirs('images')
+                        except OSError:
+                            if not os.path.isdir('images'):
+                                raise
+                        plt.savefig('images/train_traj_epoch'+str(epoch)+'_scene'+str(i)+'.png')
+                        wandb.log({"train/traj_image": wandb.Image(fig), "scene": str(i)}, step=epoch)
+                        plt.close()
+
                 ade = np.mean(eval_ade_batch_errors)
                 fde = np.mean(eval_fde_batch_errors)
 
@@ -161,40 +177,15 @@ class MID():
                 elif self.config.dataset == "sdd":
                     ade = ade * 50
                     fde = fde * 50
-                
-                learning_rate = self.optimizer.param_groups[0]['lr']
+
+                """WANDB LOGGING"""
                 train_metrics = {'ade': ade,
                                  'fde': fde}
-
                 if self.config.use_wandb:
-                    wandb.log({'learning_rate': learning_rate}, step=epoch)
+                    wandb.log({'learning_rate': self.optimizer.param_groups[0]['lr']}, step=epoch)
                     wandb.log(train_losses, step=epoch)
                     wandb.log(train_metrics, step=epoch)
-                    fig, ax = plt.subplots(figsize=(12, 6))
-                    plot_wandb(fig, ax, predictions_dict, scene.dt, max_hl, ph, map=None)
-                    plt.legend(loc='best')
-                    try:
-                        os.makedirs('images')
-                    except OSError:
-                        if not os.path.isdir('images'):
-                            raise
-                    plt.savefig('images/train_traj_'+str(epoch)+'.png')
-                    wandb.log({"train/traj_image": wandb.Image(fig)}, step=epoch)
-                    plt.close()
-
-                    # if "goal_logit_map_goal_0" in all_aux_outputs.keys():
-                    #     fig, ax = plt.subplots(1, 2, figsize=(12, 6))
-                    #     prob_maps_GT = inputs["input_traj_maps"][:, self.args.obs_length:].detach().cpu().numpy()
-                    #     prob_map = torch.sigmoid(all_aux_outputs[
-                    #         f"goal_logit_map_goal_0"]).detach().cpu().numpy()
-                    #     ax[0].imshow(prob_maps_GT[0, -1])
-                    #     ax[1].imshow(prob_map[0, 0, -1])
-                    #     plt.savefig('images/train_goal.png')
-                    #     wandb.log({"train/goal_image": wandb.Image(fig)},
-                    #             step=epoch)
-                    #     plt.close()
-
-
+                
                 print(f"Epoch {epoch} Best Of 20: ADE: {ade} FDE: {fde}")
                 self.log.info(f"Best of 20: Epoch {epoch} ADE: {ade} FDE: {fde}")
 
@@ -347,7 +338,7 @@ class MID():
         self.hyperparams['enc_rnn_dim_history'] = self.config.encoder_dim//2
         self.hyperparams['enc_rnn_dim_future'] = self.config.encoder_dim//2
         # registar
-        self.registrar = ModelRegistrar(self.model_dir, "cpu")
+        self.registrar = ModelRegistrar(self.model_dir, "cuda")
 
         if self.config.eval_mode:
             epoch = self.config.eval_at
@@ -367,7 +358,7 @@ class MID():
         Builds encoder and sets environment. Encoder is the trajectron, strongly recommended
         to read documentation for it.
         """
-        self.encoder = Trajectron(self.registrar, self.hyperparams, "cpu")
+        self.encoder = Trajectron(self.registrar, self.hyperparams, "cuda")
 
         self.encoder.set_environment(self.train_env)
         self.encoder.set_annealing_params()
@@ -380,7 +371,7 @@ class MID():
         config = self.config
         model = AutoEncoder(config, encoder = self.encoder)
 
-        self.model = model.to('cpu')
+        self.model = model.cuda()
 
         if self.config.eval_mode:
             self.model.load_state_dict(self.checkpoint['ddpm'])
