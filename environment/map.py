@@ -2,15 +2,14 @@ import torch
 import numpy as np
 from dataset.homography_warper import get_rotation_matrix2d, warp_affine_crop
 
-
 class Map(object):
-    def __init__(self, data, homography, description=None):
-        self.data = data
+    def __init__(self, data, homography=None, description=None):
+        self.data = data # contains the path to the image
         self.homography = homography
         self.description = description
 
     def as_image(self):
-        raise NotImplementedError
+        return str(self.data)
 
     def get_cropped_maps(self, world_pts, patch_size, rotation=None, device='cpu'):
         raise NotImplementedError

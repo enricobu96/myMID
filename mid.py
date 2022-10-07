@@ -157,7 +157,7 @@ class MID():
                     """
                     if self.config.use_wandb:
                         fig, ax = plt.subplots(figsize=(12, 6))
-                        fig, ax = plot_wandb(fig, ax, predictions_dict, scene.dt, max_hl, ph, map=None)
+                        fig, ax = plot_wandb(fig, ax, predictions_dict, scene.dt, max_hl, ph, map=scene.map)
                         plt.legend(loc='best')
                         try:
                             os.makedirs('images')

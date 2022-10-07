@@ -10,3 +10,4 @@ scipy
 tqdm
 seaborn
 wandb
+Pillow

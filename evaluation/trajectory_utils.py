@@ -47,13 +47,18 @@ def prediction_output_to_trajectories(prediction_output_dict,
 
             trajectory = predictions_output
 
-            if map is None:
-                histories_dict[t][node] = history
-                output_dict[t][node] = trajectory
-                futures_dict[t][node] = future
-            else:
-                histories_dict[t][node] = map.to_map_points(history)
-                output_dict[t][node] = map.to_map_points(trajectory)
-                futures_dict[t][node] = map.to_map_points(future)
+            # TODO implement to_map_points and restore the if
+            # if map is None:
+            #     histories_dict[t][node] = history
+            #     output_dict[t][node] = trajectory
+            #     futures_dict[t][node] = future
+            # else:
+            #     histories_dict[t][node] = map.to_map_points(history)
+            #     output_dict[t][node] = map.to_map_points(trajectory)
+            #     futures_dict[t][node] = map.to_map_points(future)
+
+            histories_dict[t][node] = history
+            output_dict[t][node] = trajectory
+            futures_dict[t][node] = future
 
     return output_dict, histories_dict, futures_dict

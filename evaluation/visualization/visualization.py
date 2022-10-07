@@ -1,6 +1,7 @@
 from evaluation.trajectory_utils import prediction_output_to_trajectories
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as pe
+import matplotlib.image as mpimg
 import numpy as np
 import seaborn as sns
 
@@ -90,7 +91,7 @@ def visualize_prediction(i, j, fig, ax,
     futures_dict = futures_dict[ts_key]
 
     if map is not None:
-        ax.imshow(map.as_image(), origin='lower', alpha=0.5)
+        ax.imshow(mpimg.imread(map.as_image()), origin='lower', alpha=0.5)
     plot_trajectories(i, j, fig, ax, prediction_dict, histories_dict, futures_dict, *kwargs)
 
 def plot_wandb(fig, ax, prediction_output_dict, dt, max_hl, ph, map=None, batch_num=0):
@@ -110,7 +111,7 @@ def plot_wandb(fig, ax, prediction_output_dict, dt, max_hl, ph, map=None, batch_
 
     # If the map is present plot it
     if map is not None:
-        ax.imshow(map.as_image(), origin='lower', alpha=0.5)
+        ax.imshow(mpimg.imread(map.as_image()), origin='lower', alpha=0.5)
 
     # Plot trajectories
     fig, ax = plot_trajectories_wandb(fig, ax, prediction_dict, histories_dict, futures_dict)

@@ -13,6 +13,7 @@ import dill
 import pickle
 
 from environment import Environment, Scene, Node, derivative_of
+from environment.map import Map
 
 # For debug reasons
 from pprint import pprint
@@ -260,9 +261,11 @@ for data_class in ["train", "test"]:
 
         max_timesteps = data['frame'].max()
 
-        if len(data) > 0:
+        scene_id = data['sceneId'].iloc[0]
 
-            scene = Scene(timesteps=max_timesteps+1, dt=dt, name="sdd_" + data_class, aug_func=augment if data_class == 'train' else None)
+        if len(data) > 0:
+            map_path = raw_path + '/maps/' + data_class + '/' + scene_id + '/reference.jpg'
+            scene = Scene(timesteps=max_timesteps+1, map=Map(map_path), dt=dt, name="sdd_" + data_class, aug_func=augment if data_class == 'train' else None)
             n=0
             for node_id in pd.unique(data['node_id']):
 
