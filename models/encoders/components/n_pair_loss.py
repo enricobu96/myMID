@@ -31,8 +31,8 @@ class NPairLoss(nn.Module):
 
         n_pairs, n_negatives = self.get_n_pairs(target)
         if embeddings.is_cuda:
-            n_pairs = n_pairs.to('cpu')
-            n_negatives = n_negatives.to('cpu')
+            n_pairs = n_pairs.cuda()
+            n_negatives = n_negatives.cuda()
 
         anchors = embeddings[n_pairs[:, 0]]    # (n, embedding_size)
         positives = embeddings[n_pairs[:, 1]]  # (n, embedding_size)
