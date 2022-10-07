@@ -172,3 +172,4 @@ plots/*.png
 docs/*
 !docs/.gitkeep
 !docs/old_slurm
+wandb/

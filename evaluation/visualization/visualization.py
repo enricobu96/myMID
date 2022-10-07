@@ -92,3 +92,37 @@ def visualize_prediction(i, j, fig, ax,
     if map is not None:
         ax.imshow(map.as_image(), origin='lower', alpha=0.5)
     plot_trajectories(i, j, fig, ax, prediction_dict, histories_dict, futures_dict, *kwargs)
+
+def plot_wandb(fig, ax, prediction_output_dict, dt, max_hl, ph, map=None, batch_num=0):
+    prediction_dict, histories_dict, futures_dict = prediction_output_to_trajectories(prediction_output_dict,
+                                                                                      dt,
+                                                                                      max_hl,
+                                                                                      ph,
+                                                                                      map=map)
+    cmap = ['k', 'b', 'y', 'g', 'r']
+    for node in histories_dict:
+        history = histories_dict[node]
+        future = futures_dict[node]
+        predictions = prediction_dict[node]
+
+        ax.plot(history[:, 0], history[:, 1], 'k--')
+
+        for sample_num in range(prediction_dict[node].shape[1]):
+            ax.plot(predictions[batch_num, sample_num, :, 0], predictions[batch_num, sample_num, :, 1],
+                    color=cmap[node.type.value],
+                    linewidth=0.2, alpha=0.7)
+
+            ax.plot(future[:, 0],
+                    future[:, 1],
+                    'w--',
+                    path_effects=[pe.Stroke(linewidth=2, foreground='k'), pe.Normal()])
+
+            # Current Node Position
+            circle = plt.Circle((history[-1, 0],
+                                history[-1, 1]),
+                                0.3,
+                                facecolor='g',
+                                edgecolor='k',
+                                lw=0.5,
+                                zorder=3)
+            ax.add_artist(circle)

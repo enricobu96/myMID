@@ -20,7 +20,10 @@ from models.trajectron import Trajectron
 from utils.model_registrar import ModelRegistrar
 from utils.trajectron_hypers import get_traj_hypers
 import evaluation
+
 import wandb
+from evaluation.trajectory_utils import prediction_output_to_trajectories
+from evaluation.visualization.visualization import plot_wandb
 
 class MID():
     """
@@ -89,7 +92,7 @@ class MID():
                        tags=None, name=None)
 
         for epoch in range(1, self.config.epochs + 1):
-            train_losses = []
+            train_losses = {}
             self.train_dataset.augment = self.config.augment
             for node_type, data_loader in self.train_data_loader.items():
                 pbar = tqdm(data_loader, ncols=80)
@@ -97,7 +100,7 @@ class MID():
 
                     self.optimizer.zero_grad()
                     train_loss = self.model.get_loss(batch, node_type)
-                    train_losses.append(train_loss)
+                    train_losses[str(batch)] = train_loss
                     pbar.set_description(f"Epoch {epoch}, {node_type} MSE: {train_loss.item():.2f}")
                     train_loss.backward()
                     self.optimizer.step()
@@ -160,12 +163,36 @@ class MID():
                     fde = fde * 50
                 
                 learning_rate = self.optimizer.param_groups[0]['lr']
-                train_metrics = [ade, fde]
+                train_metrics = {'ade': ade,
+                                 'fde': fde}
 
                 if self.config.use_wandb:
                     wandb.log({'learning_rate': learning_rate}, step=epoch)
                     wandb.log(train_losses, step=epoch)
                     wandb.log(train_metrics, step=epoch)
+                    fig, ax = plt.subplots(figsize=(12, 6))
+                    plot_wandb(fig, ax, predictions_dict, scene.dt, max_hl, ph, map=None)
+                    plt.legend(loc='best')
+                    try:
+                        os.makedirs('images')
+                    except OSError:
+                        if not os.path.isdir('images'):
+                            raise
+                    plt.savefig('images/train_traj_'+str(epoch)+'.png')
+                    wandb.log({"train/traj_image": wandb.Image(fig)}, step=epoch)
+                    plt.close()
+
+                    # if "goal_logit_map_goal_0" in all_aux_outputs.keys():
+                    #     fig, ax = plt.subplots(1, 2, figsize=(12, 6))
+                    #     prob_maps_GT = inputs["input_traj_maps"][:, self.args.obs_length:].detach().cpu().numpy()
+                    #     prob_map = torch.sigmoid(all_aux_outputs[
+                    #         f"goal_logit_map_goal_0"]).detach().cpu().numpy()
+                    #     ax[0].imshow(prob_maps_GT[0, -1])
+                    #     ax[1].imshow(prob_map[0, 0, -1])
+                    #     plt.savefig('images/train_goal.png')
+                    #     wandb.log({"train/goal_image": wandb.Image(fig)},
+                    #             step=epoch)
+                    #     plt.close()
 
 
                 print(f"Epoch {epoch} Best Of 20: ADE: {ade} FDE: {fde}")
@@ -231,7 +258,7 @@ class MID():
                     eval_fde_batch_errors = np.hstack((eval_fde_batch_errors, batch_error_dict[node_type]['fde']))
 
                 fig, ax = plt.subplots()
-                visualize_prediction(i, j, fig, ax, predictions_dict, scene.dt, max_hl, ph, robot_node=None, map=None)
+                # visualize_prediction(i, j, fig, ax, predictions_dict, scene.dt, max_hl, ph, robot_node=None, map=None)
 
             ade = np.mean(eval_ade_batch_errors)
             fde = np.mean(eval_fde_batch_errors)
