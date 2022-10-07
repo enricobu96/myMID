@@ -180,6 +180,8 @@ class MID():
             eval_fde_batch_errors = []
             ph = self.hyperparams['prediction_horizon']
             max_hl = self.hyperparams['maximum_history_length']
+            min_hl = self.hyperparams['minimum_history_length']
+
 
 
             for i, scene in enumerate(self.eval_scenes):
@@ -189,8 +191,8 @@ class MID():
                     batch = get_timesteps_data(env=self.eval_env, scene=scene, t=timesteps,
                                             node_type=node_type, state=self.hyperparams['state'],
                                             pred_state=self.hyperparams['pred_state'], edge_types=self.eval_env.get_edge_types(),
-                                            min_ht=7, max_ht=self.hyperparams['maximum_history_length'], min_ft=12,
-                                            max_ft=12, hyperparams=self.hyperparams)
+                                            min_ht=min_hl, max_ht=max_hl, min_ft=12,
+                                            max_ft=ph, hyperparams=self.hyperparams)
                     if batch is None:
                         continue
                     test_batch = batch[0]
@@ -221,7 +223,7 @@ class MID():
                     eval_fde_batch_errors = np.hstack((eval_fde_batch_errors, batch_error_dict[node_type]['fde']))
 
                 fig, ax = plt.subplots()
-                visualize_prediction(i, j, fig, ax, predictions_dict, scene.dt, max_hl, ph, robot_node=None, map=None)
+                # visualize_prediction(i, j, fig, ax, predictions_dict, scene.dt, max_hl, ph, robot_node=None, map=None)
 
             ade = np.mean(eval_ade_batch_errors)
             fde = np.mean(eval_fde_batch_errors)
