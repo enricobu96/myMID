@@ -207,6 +207,13 @@ class MID():
     def eval(self):
         epoch = self.config.eval_at
 
+        if wandb.run is None and self.config.use_wandb:
+            wandb.init(settings=wandb.Settings(start_method="thread"),
+                       project="myMID", config=self.config,
+                       group=self.config['dataset'],
+                       job_type=self.config['dataset'],
+                       tags=None, name=None)
+
         for j in range(5):
 
             node_type = "PEDESTRIAN"
@@ -256,8 +263,21 @@ class MID():
                     eval_ade_batch_errors = np.hstack((eval_ade_batch_errors, batch_error_dict[node_type]['ade']))
                     eval_fde_batch_errors = np.hstack((eval_fde_batch_errors, batch_error_dict[node_type]['fde']))
 
-                fig, ax = plt.subplots()
-                # visualize_prediction(i, j, fig, ax, predictions_dict, scene.dt, max_hl, ph, robot_node=None, map=None)
+                """
+                WANDB VISUALIZATION
+                """
+                if self.config.use_wandb:
+                        fig, ax = plt.subplots(figsize=(24, 12))
+                        fig, ax = plot_wandb(fig, ax, predictions_dict, scene.dt, max_hl, ph, map=scene.map, mean_x=scene.mean_x, mean_y=scene.mean_y)
+                        plt.legend(loc='best')
+                        try:
+                            os.makedirs('images')
+                        except OSError:
+                            if not os.path.isdir('images'):
+                                raise
+                        plt.savefig('images/test_traj_epoch'+str(epoch)+'_scene'+str(i)+'_it'+str(j)+'.png')
+                        wandb.log({"train/test_image": wandb.Image(fig), "scene": str(i)}, step=epoch)
+                        plt.close()
 
             ade = np.mean(eval_ade_batch_errors)
             fde = np.mean(eval_fde_batch_errors)
@@ -268,6 +288,12 @@ class MID():
             elif self.config.dataset == "sdd":
                 ade = ade * 50
                 fde = fde * 50
+            
+            """WANDB LOGGING"""
+            train_metrics = {'ade': ade,
+                             'fde': fde}
+            if self.config.use_wandb:
+                wandb.log(train_metrics, step=epoch)
 
             print(f"Epoch {epoch} Best Of 20: ADE: {ade} FDE: {fde}")
         #self.log.info(f"Best of 20: Epoch {epoch} ADE: {ade} FDE: {fde}")
