@@ -20,6 +20,9 @@ eval_every: 30
 eval_at: 70
 eval_mode: False
 
+# Visualization
+use_wandb: True
+
 ############### Trajectron++ Config #################
 # Misc
 conf: None
