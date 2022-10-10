@@ -174,3 +174,4 @@ docs/*
 !docs/old_slurm
 wandb/
 images/
+!images/.gitkeep
