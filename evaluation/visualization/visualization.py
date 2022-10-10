@@ -148,7 +148,10 @@ def plot_trajectories_wandb(fig, ax,
             continue
         
         # history trajectories
-        ax.plot((history[:, 0]+mean_x)*50, (history[:, 1]+mean_y)*50, 'k--')
+        if mean_x is not None and mean_y is not None:
+            ax.plot((history[:, 0]+mean_x)*50, (history[:, 1]+mean_y)*50, 'k--')
+        else:
+            ax.plot(history[:, 0], history[:, 1], 'k--')
 
         for sample_num in range(prediction_dict[node].shape[1]):
 
@@ -159,25 +162,46 @@ def plot_trajectories_wandb(fig, ax,
                                 color=np.random.choice(cmap), alpha=0.8)
 
             # predicted trajectories
-            ax.plot((predictions[batch_num, sample_num, :, 0]+mean_x)*50,
-                    (predictions[batch_num, sample_num, :, 1]+mean_y)*50,
-                    '-o', zorder=1, lw=3, ms=4)
+            if mean_x is not None and mean_y is not None:
+                ax.plot((predictions[batch_num, sample_num, :, 0]+mean_x)*50,
+                        (predictions[batch_num, sample_num, :, 1]+mean_y)*50,
+                        '-o', zorder=1, lw=3, ms=4)
+            else:
+                ax.plot(predictions[batch_num, sample_num, :, 0],
+                        predictions[batch_num, sample_num, :, 1],
+                        '-o', zorder=1)
 
             # ground truth
-            ax.plot((future[:, 0]+mean_x)*50,
-                    (future[:, 1]+mean_y)*50,
-                    'w--',
-                    path_effects=[pe.Stroke(linewidth=edge_width, foreground='k'), pe.Normal()],
-                    zorder=2)
+            if mean_x is not None and mean_y is not None:
+                ax.plot((future[:, 0]+mean_x)*50,
+                        (future[:, 1]+mean_y)*50,
+                        'w--',
+                        path_effects=[pe.Stroke(linewidth=edge_width, foreground='k'), pe.Normal()],
+                        zorder=2)
+            else:
+                ax.plot(future[:, 0],
+                        future[:, 1],
+                        'w--',
+                        path_effects=[pe.Stroke(linewidth=edge_width, foreground='k'), pe.Normal()],
+                        zorder=2)
 
             # current node position
-            circle = plt.Circle(((history[-1, 0]+mean_x)*50,
-                                 (history[-1, 1])+mean_y)*50,
-                                node_circle_size,
-                                facecolor='g',
-                                edgecolor='k',
-                                lw=circle_edge_width,
-                                zorder=3)
+            if mean_x is not None and mean_y is not None:    
+                circle = plt.Circle(((history[-1, 0]+mean_x)*50,
+                                    (history[-1, 1])+mean_y)*50,
+                                    node_circle_size,
+                                    facecolor='g',
+                                    edgecolor='k',
+                                    lw=circle_edge_width,
+                                    zorder=3)
+            else:
+                circle = plt.Circle((history[-1, 0],
+                                    history[-1, 1]),
+                                    0.3,
+                                    facecolor='g',
+                                    edgecolor='k',
+                                    lw=0.5,
+                                    zorder=3)
             ax.add_artist(circle)
 
     ax.axis('equal')
