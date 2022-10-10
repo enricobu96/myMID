@@ -4,6 +4,7 @@ import matplotlib.patheffects as pe
 import matplotlib.image as mpimg
 import numpy as np
 import seaborn as sns
+import cv2
 
 """
 File containing visualization utilities. This file also comes with Trajectron++ code (https://github.com/StanfordASL/Trajectron-plus-plus/).
@@ -94,7 +95,7 @@ def visualize_prediction(i, j, fig, ax,
         ax.imshow(mpimg.imread(map.as_image()), origin='lower', alpha=0.5)
     plot_trajectories(i, j, fig, ax, prediction_dict, histories_dict, futures_dict, *kwargs)
 
-def plot_wandb(fig, ax, prediction_output_dict, dt, max_hl, ph, map=None, batch_num=0):
+def plot_wandb(fig, ax, prediction_output_dict, dt, max_hl, ph, map=None, batch_num=0, mean_x=None, mean_y=None):
 
     # Get prodictions, histories and futures as dictionaries, prepare them for plotting
     prediction_dict, histories_dict, futures_dict = prediction_output_to_trajectories(prediction_output_dict,
@@ -111,10 +112,9 @@ def plot_wandb(fig, ax, prediction_output_dict, dt, max_hl, ph, map=None, batch_
 
     # If the map is present plot it
     if map is not None:
-        ax.imshow(mpimg.imread(map.as_image()), origin='lower', alpha=0.5)
-
+        ax.imshow(mpimg.imread(map.as_image()), alpha=0.7)
     # Plot trajectories
-    fig, ax = plot_trajectories_wandb(fig, ax, prediction_dict, histories_dict, futures_dict)
+    fig, ax = plot_trajectories_wandb(fig, ax, prediction_dict, histories_dict, futures_dict, mean_x=mean_x, mean_y=mean_y)
 
     return fig, ax
 
@@ -127,9 +127,11 @@ def plot_trajectories_wandb(fig, ax,
                       line_width=0.2,
                       edge_width=2,
                       circle_edge_width=0.5,
-                      node_circle_size=0.3,
+                      node_circle_size=10,
                       batch_num=0,
-                      kde=False):
+                      kde=False,
+                      mean_x=None,
+                      mean_y=None):
 
     cmap = ['k', 'b', 'y', 'g', 'r']
 
@@ -142,7 +144,7 @@ def plot_trajectories_wandb(fig, ax,
             continue
         
         # history trajectories
-        ax.plot(history[:, 0], history[:, 1], 'k--')
+        ax.plot((history[:, 0]+mean_x)*50, (history[:, 1]+mean_y)*50, 'k--')
 
         for sample_num in range(prediction_dict[node].shape[1]):
 
@@ -154,21 +156,26 @@ def plot_trajectories_wandb(fig, ax,
                                 color=np.random.choice(cmap), alpha=0.8)
 
             # predicted trajectories
-            ax.plot(predictions[batch_num, sample_num, :, 0],
-                    predictions[batch_num, sample_num, :, 1],
-                    '-o')
+            ax.plot((predictions[batch_num, sample_num, :, 0]+mean_x)*50,
+                    (predictions[batch_num, sample_num, :, 1]+mean_y)*50,
+                    '-o',
+                    zorder=1,
+                    lw=3,
+                    ms=4,
+                    )
                     # color=cmap[node.type.value],
                     # linewidth=line_width, alpha=line_alpha)
 
             # ground truth
-            ax.plot(future[:, 0],
-                    future[:, 1],
+            ax.plot((future[:, 0]+mean_x)*50,
+                    (future[:, 1]+mean_y)*50,
                     'w--',
-                    path_effects=[pe.Stroke(linewidth=edge_width, foreground='k'), pe.Normal()])
+                    path_effects=[pe.Stroke(linewidth=edge_width, foreground='k'), pe.Normal()],
+                    zorder=2)
 
             # current node position
-            circle = plt.Circle((history[-1, 0],
-                                 history[-1, 1]),
+            circle = plt.Circle(((history[-1, 0]+mean_x)*50,
+                                 (history[-1, 1])+mean_y)*50,
                                 node_circle_size,
                                 facecolor='g',
                                 edgecolor='k',

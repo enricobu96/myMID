@@ -156,8 +156,8 @@ class MID():
                     WANDB VISUALIZATION
                     """
                     if self.config.use_wandb:
-                        fig, ax = plt.subplots(figsize=(12, 6))
-                        fig, ax = plot_wandb(fig, ax, predictions_dict, scene.dt, max_hl, ph, map=scene.map)
+                        fig, ax = plt.subplots(figsize=(24, 12))
+                        fig, ax = plot_wandb(fig, ax, predictions_dict, scene.dt, max_hl, ph, map=scene.map, mean_x=scene.mean_x, mean_y=scene.mean_y)
                         plt.legend(loc='best')
                         try:
                             os.makedirs('images')

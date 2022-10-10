@@ -255,6 +255,10 @@ for data_class in ["train", "test"]:
         data['x'] = data['x']/50
         data['y'] = data['y']/50
 
+        # Computing mean for subsequent visualization
+        mean_x = data['x'].mean()
+        mean_y = data['y'].mean()
+
         # Mean Position
         data['x'] = data['x'] - data['x'].mean()
         data['y'] = data['y'] - data['y'].mean()
@@ -265,7 +269,7 @@ for data_class in ["train", "test"]:
 
         if len(data) > 0:
             map_path = raw_path + '/maps/' + data_class + '/' + scene_id + '/reference.jpg'
-            scene = Scene(timesteps=max_timesteps+1, map=Map(map_path), dt=dt, name="sdd_" + data_class, aug_func=augment if data_class == 'train' else None)
+            scene = Scene(timesteps=max_timesteps+1, map=Map(map_path), dt=dt, name="sdd_" + data_class, aug_func=augment if data_class == 'train' else None, mean_x=mean_x, mean_y=mean_y)
             n=0
             for node_id in pd.unique(data['node_id']):
 
