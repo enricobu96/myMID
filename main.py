@@ -26,13 +26,6 @@ def main():
     config = EasyDict(config)
     agent = MID(config)
 
-    # keyattr = ["lr", "data_dir", "epochs", "dataset", "batch_size","diffnet"]
-    # keys = {}
-    # for k,v in config.items():
-    #     if k in keyattr:
-    #         keys[k] = v
-    #
-    # pprint(keys)
     if config["eval_mode"]:
         agent.eval()
     else:

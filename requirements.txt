@@ -11,4 +11,3 @@ tqdm
 seaborn
 wandb
 Pillow
-opencv-python

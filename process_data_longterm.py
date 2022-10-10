@@ -114,7 +114,6 @@ data_folder_name = 'processed_data_noise'
 maybe_makedirs(data_folder_name)
 data_columns = pd.MultiIndex.from_product([['position', 'velocity', 'acceleration'], ['x', 'y']])
 
-
 for data_class in ["train", "test"]:
     raw_path = "raw_data/stanford/longterm"
     out_path = "processed_data_noise"
@@ -138,7 +137,6 @@ for data_class in ["train", "test"]:
         data['metaId'] = pd.to_numeric(data['metaId'], downcast='integer')
 
         data['frame'] = data['frame'] // 30
-        # data['frame'] -= data['frame'].min()
 
         data['node_type'] = 'PEDESTRIAN'
         data['node_id'] = data['trackId'].astype(str)
@@ -147,10 +145,6 @@ for data_class in ["train", "test"]:
         # apply data scale as same as PECnet
         data['x'] = data['x']/50
         data['y'] = data['y']/50
-
-        # Mean Position
-        # data['x'] = data['x'] - data['x'].mean()
-        # data['y'] = data['y'] - data['y'].mean()
 
         max_timesteps = data['frame'].max()
 
@@ -206,7 +200,6 @@ for data_class in ["train", "test"]:
             print(scene)
             scenes.append(scene)
     env.scenes = scenes
-    print(len(scenes))
 
     if len(scenes) > 0:
         with open(data_out_path, 'wb') as f:
