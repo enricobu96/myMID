@@ -9,15 +9,15 @@ data_dir: processed_data_noise # The path with the directory with XXX.pkl
 diffnet: TransformerConcatLinear # Type of diffnet
 encoder_dim: 256 # Encoder dimension
 tf_layer: 3 # Number of layers of the transformer
-epochs: 90 
+epochs: 1 
 batch_size: 256
 eval_batch_size: 256
 k_eval: 25
 seed: 123
-eval_every: 30
+eval_every: 1
 
 # Testing
-eval_at: 70
+eval_at: 1
 eval_mode: False
 
 # Visualization
@@ -27,8 +27,8 @@ use_wandb: True
 sdd_longterm: False
 
 # Cosine schedule. Choose from: two_fifth_pi_cos_squared, piecewise_cos_inv, clipped_two_fifth, sigmoid, sigmoid_2
-variance_sched: linear
-cosine_sched: sigmoid_2
+variance_sched: cosine
+cosine_sched: sigmoid
 
 ############### Trajectron++ Config #################
 # Misc

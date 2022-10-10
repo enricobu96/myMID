@@ -119,8 +119,8 @@ class VarianceSchedule(Module):
             elif cosine_sched == 'sigmoid_2':
                 betas = sigmoid_2(cosine_s, num_steps)
             else:
-                print('Warning: incorrect cosine schedule, rolling back on sigmoid_2')
-                betas = sigmoid_2(cosine_s, num_steps)
+                print('Warning: incorrect cosine schedule, rolling back on sigmoid')
+                betas = sigmoid(cosine_s, num_steps)
 
         betas = torch.cat([torch.zeros([1]), betas], dim=0)     # Padding
 
@@ -216,10 +216,10 @@ class TransformerConcatLinear(Module):
     Methods:
     forward(x,beta,context): nn.Linear : forward pass for the decoder model
     """
-    def __init__(self, point_dim, context_dim, tf_layer, residual):
+    def __init__(self, point_dim, context_dim, tf_layer, residual, longterm=False, dataset=None):
         super().__init__()
         self.residual = residual
-        self.pos_emb = PositionalEncoding(d_model=2*context_dim, dropout=0.1, max_len=30)
+        self.pos_emb = PositionalEncoding(d_model=2*context_dim, dropout=0.1, max_len=30 if longterm and dataset=='sdd' else 24)
         self.concat1 = ConcatSquashLinear(2,2*context_dim,context_dim+3)
         self.layer = nn.TransformerEncoderLayer(d_model=2*context_dim, nhead=4, dim_feedforward=4*context_dim)
         self.transformer_encoder = nn.TransformerEncoder(self.layer, num_layers=tf_layer)
