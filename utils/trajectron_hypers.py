@@ -2,7 +2,7 @@
 IMPORTANT. Utility function to get hyperparameters for the model (the Trajectron++ part). Complementary with the config file in configs/
 """
 
-def get_traj_hypers(longterm, dataset):
+def get_traj_hypers(longterm=False, dataset=None):
     hypers = {   'batch_size': 256,
     'grad_clip': 1.0, # clips gradient to 1
     'learning_rate_style': 'exp',

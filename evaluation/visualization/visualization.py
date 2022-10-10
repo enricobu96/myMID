@@ -188,7 +188,7 @@ def plot_trajectories_wandb(fig, ax,
             # current node position
             if mean_x is not None and mean_y is not None:    
                 circle = plt.Circle(((history[-1, 0]+mean_x)*50,
-                                    (history[-1, 1])+mean_y)*50,
+                                    (history[-1, 1]+mean_y)*50),
                                     node_circle_size,
                                     facecolor='g',
                                     edgecolor='k',

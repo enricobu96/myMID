@@ -123,6 +123,7 @@ class MID():
                 min_ft = minimum future timesteps (prediction horizon)
                 max_ft = maximum future timesteps (predition horizon)
                 """
+                sc = 1
                 for i, scene in enumerate(self.eval_scenes):
                     print(f"----- Evaluating Scene {i + 1}/{len(self.eval_scenes)}")
                     for t in tqdm(range(0, scene.timesteps, 10)):
@@ -169,8 +170,9 @@ class MID():
                         except OSError:
                             if not os.path.isdir('images'):
                                 raise
-                        plt.savefig('images/train_traj_epoch'+str(epoch)+'_scene'+str(i)+'.png')
-                        wandb.log({"train/traj_image": wandb.Image(fig), "scene": str(i)}, step=epoch)
+                        plt.savefig('images/train_traj_epoch'+str(epoch)+'_scene'+str(sc)+'.png')
+                        wandb.log({"train/traj_image": wandb.Image(fig), "scene": str(sc)}, step=epoch)
+                        sc += 1
                         plt.close()
 
                 ade = np.mean(eval_ade_batch_errors)
@@ -222,7 +224,7 @@ class MID():
             ph = self.hyperparams['prediction_horizon']
             max_hl = self.hyperparams['maximum_history_length']
             min_hl = self.hyperparams['minimum_history_length'] if self.config.sdd_longterm and self.config['dataset'] == 'sdd' else 7
-
+            sc = 1
             for i, scene in enumerate(self.eval_scenes):
                 print(f"----- Evaluating Scene {i + 1}/{len(self.eval_scenes)}")
                 for t in tqdm(range(0, scene.timesteps, 10)):
@@ -273,8 +275,9 @@ class MID():
                         except OSError:
                             if not os.path.isdir('images'):
                                 raise
-                        plt.savefig('images/test_traj_epoch'+str(epoch)+'_scene'+str(i)+'_it'+str(j)+'.png')
-                        wandb.log({"train/test_image": wandb.Image(fig), "scene": str(i)}, step=epoch)
+                        plt.savefig('images/test_traj_epoch'+str(epoch)+'_scene'+str(sc)+'_it'+str(j)+'.png')
+                        wandb.log({"train/test_image": wandb.Image(fig), "scene": str(sc)}, step=epoch)
+                        sc += 1
                         plt.close()
 
             ade = np.mean(eval_ade_batch_errors)
