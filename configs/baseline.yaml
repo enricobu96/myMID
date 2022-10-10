@@ -26,6 +26,10 @@ use_wandb: True
 # SDD longterm prediction
 sdd_longterm: False
 
+# Cosine schedule. Choose from: two_fifth_pi_cos_squared, piecewise_cos_inv, clipped_two_fifth, sigmoid, sigmoid_2
+variance_sched: linear
+cosine_sched: sigmoid_2
+
 ############### Trajectron++ Config #################
 # Misc
 conf: None

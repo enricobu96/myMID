@@ -50,9 +50,6 @@ def clipped_two_fifth(cosine_s, num_steps):
     betas = torch.Tensor(betas)
     return betas
 
-def tangent_inv(cosine_s, num_steps):
-    pass
-
 def sigmoid(cosine_s, num_steps):
     lambd = 6
     eps = 0.05
@@ -101,7 +98,7 @@ class VarianceSchedule(Module):
         2. Pads the betas in order to match dimensions
         3. Computes alphas, alpha_logs and sigmas
     """
-    def __init__(self, num_steps, mode='linear',beta_1=1e-4, beta_T=5e-2,cosine_s=8e-3): #original cosine_s=8e-3
+    def __init__(self, num_steps, mode='linear',beta_1=1e-4, beta_T=5e-2,cosine_s=8e-3,cosine_sched='sigmoid_2'): #original cosine_s=8e-3
         super().__init__()
         assert mode in ('linear', 'cosine')
         self.num_steps = num_steps
@@ -112,13 +109,19 @@ class VarianceSchedule(Module):
         if mode == 'linear':
             betas = torch.linspace(beta_1, beta_T, steps=num_steps)
         elif mode == 'cosine':
-            print('COSINE SCHEDULE')
-            # betas = two_fifth_pi_cos_squared(cosine_s, num_steps)
-            # betas = piecewise_cos_inv(cosine_s, num_steps)
-            # betas = tangent_inv(cosine_s, num_steps)
-            # betas = clipped_two_fifth(cosine_s, num_steps)
-            betas = sigmoid_2(cosine_s, num_steps)
-            print(betas)
+            if cosine_sched == 'two_fifth_pi_cos_squared':
+                betas = two_fifth_pi_cos_squared(cosine_s, num_steps)
+            elif cosine_sched == 'piecewise_cos_inv':
+                betas = piecewise_cos_inv(cosine_s, num_steps)
+            elif cosine_sched == 'clipped_two_fifth':
+                betas = clipped_two_fifth(cosine_s, num_steps)
+            elif cosine_sched == 'sigmoid':
+                betas = sigmoid(cosine_s, num_steps)
+            elif cosine_sched == 'sigmoid_2':
+                betas = sigmoid_2(cosine_s, num_steps)
+            else:
+                print('Warning: incorrect cosine schedule, rolling back on sigmoid_2')
+                betas = sigmoid_2(cosine_s, num_steps)
 
         betas = torch.cat([torch.zeros([1]), betas], dim=0)     # Padding
 
