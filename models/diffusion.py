@@ -37,7 +37,6 @@ def clipped_two_fifth(cosine_s, num_steps):
         f = (1/(-np.sign(i)*(num_steps//2)))*i+1
         clips.append(f/10)
     clips = np.nan_to_num(clips, nan=1)
-    print('clips', clips)
     f0 = math.cos(cosine_s/(1+cosine_s) * (2*math.pi/5)) ** 2
     for i in range(1, num_steps+1):
         tT = i/num_steps
