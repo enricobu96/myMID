@@ -33,7 +33,7 @@ class Scene(object):
         get_node_by_id(id): Node : returns node by id
 
     """
-    def __init__(self, timesteps, map=None, dt=1, name="", frequency_multiplier=1, aug_func=None,  non_aug_scene=None):
+    def __init__(self, timesteps, map=None, dt=1, name="", frequency_multiplier=1, aug_func=None,  non_aug_scene=None, mean_x=None, mean_y=None):
         self.map = map
         self.timesteps = timesteps
         self.dt = dt
@@ -51,6 +51,9 @@ class Scene(object):
 
         self.aug_func = aug_func
         self.non_aug_scene = non_aug_scene
+        
+        self.mean_x = mean_x
+        self.mean_y = mean_y
 
     def add_robot_from_nodes(self, robot_type):
         nodes_list = [node for node in self.nodes if node.type == robot_type]
