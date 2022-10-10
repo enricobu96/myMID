@@ -2,21 +2,31 @@ import torch
 import numpy as np
 from dataset.homography_warper import get_rotation_matrix2d, warp_affine_crop
 
-
 class Map(object):
-    def __init__(self, data, homography, description=None):
-        self.data = data
-        self.homography = homography
+    def __init__(self, data, homography=None, description=None):
+        self.data = data # contains the path to the image
+        self.homography = np.identity(3)
         self.description = description
 
     def as_image(self):
-        raise NotImplementedError
+        return str(self.data)
+        # return (np.transpose(self.data, (2, 1, 0))).astype(np.uint)
 
     def get_cropped_maps(self, world_pts, patch_size, rotation=None, device='cpu'):
         raise NotImplementedError
 
     def to_map_points(self, scene_pts):
-        raise NotImplementedError
+        org_shape = None
+        if len(scene_pts.shape) > 2:
+            org_shape = scene_pts.shape
+            scene_pts = scene_pts.reshape((-1, 2))
+        N, dims = scene_pts.shape
+        points_with_one = np.ones((dims + 1, N))
+        points_with_one[:dims] = scene_pts.T
+        map_points = (self.homography @ points_with_one).T[..., :dims]
+        if org_shape is not None:
+            map_points = map_points.reshape(org_shape)
+        return map_points
 
 
 class GeometricMap(Map):

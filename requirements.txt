@@ -9,3 +9,6 @@ easydict
 scipy
 tqdm
 seaborn
+wandb
+Pillow
+opencv-python

@@ -21,6 +21,10 @@ from utils.model_registrar import ModelRegistrar
 from utils.trajectron_hypers import get_traj_hypers
 import evaluation
 
+import wandb
+from evaluation.trajectory_utils import prediction_output_to_trajectories
+from evaluation.visualization.visualization import plot_wandb
+
 class MID():
     """
     Motion Indeterminacy Diffusion model from MID paper. The pipeline (when training)
@@ -80,7 +84,15 @@ class MID():
         """
         Method for model training
         """
+        if wandb.run is None and self.config.use_wandb:
+            wandb.init(settings=wandb.Settings(start_method="thread"),
+                       project="myMID", config=self.config,
+                       group=self.config['dataset'],
+                       job_type=self.config['dataset'],
+                       tags=None, name=None)
+
         for epoch in range(1, self.config.epochs + 1):
+            train_losses = {}
             self.train_dataset.augment = self.config.augment
             for node_type, data_loader in self.train_data_loader.items():
                 pbar = tqdm(data_loader, ncols=80)
@@ -88,6 +100,7 @@ class MID():
 
                     self.optimizer.zero_grad()
                     train_loss = self.model.get_loss(batch, node_type)
+                    train_losses[str(batch)] = train_loss
                     pbar.set_description(f"Epoch {epoch}, {node_type} MSE: {train_loss.item():.2f}")
                     train_loss.backward()
                     self.optimizer.step()
@@ -144,7 +157,21 @@ class MID():
                         eval_ade_batch_errors = np.hstack((eval_ade_batch_errors, batch_error_dict[node_type]['ade']))
                         eval_fde_batch_errors = np.hstack((eval_fde_batch_errors, batch_error_dict[node_type]['fde']))
 
-
+                    """
+                    WANDB VISUALIZATION
+                    """
+                    if self.config.use_wandb:
+                        fig, ax = plt.subplots(figsize=(24, 12))
+                        fig, ax = plot_wandb(fig, ax, predictions_dict, scene.dt, max_hl, ph, map=scene.map, mean_x=scene.mean_x, mean_y=scene.mean_y)
+                        plt.legend(loc='best')
+                        try:
+                            os.makedirs('images')
+                        except OSError:
+                            if not os.path.isdir('images'):
+                                raise
+                        plt.savefig('images/train_traj_epoch'+str(epoch)+'_scene'+str(i)+'.png')
+                        wandb.log({"train/traj_image": wandb.Image(fig), "scene": str(i)}, step=epoch)
+                        plt.close()
 
                 ade = np.mean(eval_ade_batch_errors)
                 fde = np.mean(eval_fde_batch_errors)
@@ -156,7 +183,14 @@ class MID():
                     ade = ade * 50
                     fde = fde * 50
 
-
+                """WANDB LOGGING"""
+                train_metrics = {'ade': ade,
+                                 'fde': fde}
+                if self.config.use_wandb:
+                    wandb.log({'learning_rate': self.optimizer.param_groups[0]['lr']}, step=epoch)
+                    wandb.log(train_losses, step=epoch)
+                    wandb.log(train_metrics, step=epoch)
+                
                 print(f"Epoch {epoch} Best Of 20: ADE: {ade} FDE: {fde}")
                 self.log.info(f"Best of 20: Epoch {epoch} ADE: {ade} FDE: {fde}")
 
