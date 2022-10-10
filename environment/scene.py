@@ -52,6 +52,7 @@ class Scene(object):
         self.aug_func = aug_func
         self.non_aug_scene = non_aug_scene
         
+        # Means are needed just for rescaling for plotting
         self.mean_x = mean_x
         self.mean_y = mean_y
 

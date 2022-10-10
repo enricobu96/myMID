@@ -6,6 +6,7 @@ import dill
 import pickle
 
 from environment import Environment, Scene, Node, derivative_of
+from environment.map import Map
 from pprint import pprint
 import warnings
 warnings.filterwarnings('ignore')
@@ -114,7 +115,6 @@ data_folder_name = 'processed_data_noise'
 maybe_makedirs(data_folder_name)
 data_columns = pd.MultiIndex.from_product([['position', 'velocity', 'acceleration'], ['x', 'y']])
 
-
 for data_class in ["train", "test"]:
     raw_path = "raw_data/stanford/longterm"
     out_path = "processed_data_noise"
@@ -138,7 +138,6 @@ for data_class in ["train", "test"]:
         data['metaId'] = pd.to_numeric(data['metaId'], downcast='integer')
 
         data['frame'] = data['frame'] // 30
-        # data['frame'] -= data['frame'].min()
 
         data['node_type'] = 'PEDESTRIAN'
         data['node_id'] = data['trackId'].astype(str)
@@ -148,14 +147,16 @@ for data_class in ["train", "test"]:
         data['x'] = data['x']/50
         data['y'] = data['y']/50
 
-        # Mean Position
-        # data['x'] = data['x'] - data['x'].mean()
-        # data['y'] = data['y'] - data['y'].mean()
-
         max_timesteps = data['frame'].max()
 
+        mean_x = data['x'].mean()
+        mean_y = data['y'].mean()
+
+        scene_id = data['sceneId'].iloc[0]
+
         if len(data) > 0:
-            scene = Scene(timesteps=max_timesteps+1, dt=dt, name="sdd_" + data_class, aug_func=augment if data_class == 'train' else None)
+            map_path = 'raw_data/stanford/maps/' + data_class + '/' + scene_id + '/reference.jpg'
+            scene = Scene(timesteps=max_timesteps+1, map=Map(map_path), dt=dt, name="sdd_" + data_class, aug_func=augment if data_class == 'train' else None, mean_x=mean_x, mean_y=mean_y)
             n=0
             for node_id in pd.unique(data['node_id']):
                 nodes_df = data[data['node_id'] == node_id]
@@ -206,7 +207,6 @@ for data_class in ["train", "test"]:
             print(scene)
             scenes.append(scene)
     env.scenes = scenes
-    print(len(scenes))
 
     if len(scenes) > 0:
         with open(data_out_path, 'wb') as f:

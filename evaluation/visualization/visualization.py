@@ -4,13 +4,16 @@ import matplotlib.patheffects as pe
 import matplotlib.image as mpimg
 import numpy as np
 import seaborn as sns
-import cv2
 
 """
-File containing visualization utilities. This file also comes with Trajectron++ code (https://github.com/StanfordASL/Trajectron-plus-plus/).
-Not used in this project.
+File containing visualization utilities. This file also comes with Trajectron++ code (https://github.com/StanfordASL/Trajectron-plus-plus/),
+but has been modified for MID by @enricobu96.
 """
 
+"""
+STANDARD VISUALIZATION
+Visualizes history, future gt and predictions without the map and without wandb.
+"""
 def plot_trajectories(i,j,fig, ax,
                       prediction_dict,
                       histories_dict,
@@ -66,7 +69,6 @@ def plot_trajectories(i,j,fig, ax,
     ax.axis('equal')
     fig.savefig('plots/scene_' + str(i) + '_' + str(j) + '.png')
 
-
 def visualize_prediction(i, j, fig, ax,
                          prediction_output_dict,
                          dt,
@@ -95,9 +97,12 @@ def visualize_prediction(i, j, fig, ax,
         ax.imshow(mpimg.imread(map.as_image()), origin='lower', alpha=0.5)
     plot_trajectories(i, j, fig, ax, prediction_dict, histories_dict, futures_dict, *kwargs)
 
-def plot_wandb(fig, ax, prediction_output_dict, dt, max_hl, ph, map=None, batch_num=0, mean_x=None, mean_y=None):
+"""
+WANDB VISUALIZATION
+Visualizes history, future gt and predictions with map (if present in the scene) and using wandb.
+"""
 
-    # Get prodictions, histories and futures as dictionaries, prepare them for plotting
+def plot_wandb(fig, ax, prediction_output_dict, dt, max_hl, ph, map=None, batch_num=0, mean_x=None, mean_y=None):
     prediction_dict, histories_dict, futures_dict = prediction_output_to_trajectories(prediction_output_dict,
                                                                                       dt,
                                                                                       max_hl,
@@ -113,11 +118,10 @@ def plot_wandb(fig, ax, prediction_output_dict, dt, max_hl, ph, map=None, batch_
     # If the map is present plot it
     if map is not None:
         ax.imshow(mpimg.imread(map.as_image()), alpha=0.7)
-    # Plot trajectories
+
     fig, ax = plot_trajectories_wandb(fig, ax, prediction_dict, histories_dict, futures_dict, mean_x=mean_x, mean_y=mean_y)
 
     return fig, ax
-
 
 def plot_trajectories_wandb(fig, ax,
                       prediction_dict,
@@ -126,7 +130,7 @@ def plot_trajectories_wandb(fig, ax,
                       line_alpha=0.7,
                       line_width=0.2,
                       edge_width=2,
-                      circle_edge_width=0.5,
+                      circle_edge_width=2,
                       node_circle_size=10,
                       batch_num=0,
                       kde=False,
@@ -144,43 +148,60 @@ def plot_trajectories_wandb(fig, ax,
             continue
         
         # history trajectories
-        ax.plot((history[:, 0]+mean_x)*50, (history[:, 1]+mean_y)*50, 'k--')
+        if mean_x is not None and mean_y is not None:
+            ax.plot((history[:, 0]+mean_x)*50, (history[:, 1]+mean_y)*50, 'k--')
+        else:
+            ax.plot(history[:, 0], history[:, 1], 'k--')
 
         for sample_num in range(prediction_dict[node].shape[1]):
 
             if kde and predictions.shape[1] >= 50:
-                line_alpha = 0.2
                 for t in range(predictions.shape[2]):
                     sns.kdeplot(predictions[batch_num, :, t, 0], predictions[batch_num, :, t, 1],
                                 ax=ax, shade=True, shade_lowest=False,
                                 color=np.random.choice(cmap), alpha=0.8)
 
             # predicted trajectories
-            ax.plot((predictions[batch_num, sample_num, :, 0]+mean_x)*50,
-                    (predictions[batch_num, sample_num, :, 1]+mean_y)*50,
-                    '-o',
-                    zorder=1,
-                    lw=3,
-                    ms=4,
-                    )
-                    # color=cmap[node.type.value],
-                    # linewidth=line_width, alpha=line_alpha)
+            if mean_x is not None and mean_y is not None:
+                ax.plot((predictions[batch_num, sample_num, :, 0]+mean_x)*50,
+                        (predictions[batch_num, sample_num, :, 1]+mean_y)*50,
+                        '-o', zorder=1, lw=3, ms=4)
+            else:
+                ax.plot(predictions[batch_num, sample_num, :, 0],
+                        predictions[batch_num, sample_num, :, 1],
+                        '-o', zorder=1)
 
             # ground truth
-            ax.plot((future[:, 0]+mean_x)*50,
-                    (future[:, 1]+mean_y)*50,
-                    'w--',
-                    path_effects=[pe.Stroke(linewidth=edge_width, foreground='k'), pe.Normal()],
-                    zorder=2)
+            if mean_x is not None and mean_y is not None:
+                ax.plot((future[:, 0]+mean_x)*50,
+                        (future[:, 1]+mean_y)*50,
+                        'w--',
+                        path_effects=[pe.Stroke(linewidth=edge_width, foreground='k'), pe.Normal()],
+                        zorder=2)
+            else:
+                ax.plot(future[:, 0],
+                        future[:, 1],
+                        'w--',
+                        path_effects=[pe.Stroke(linewidth=edge_width, foreground='k'), pe.Normal()],
+                        zorder=2)
 
             # current node position
-            circle = plt.Circle(((history[-1, 0]+mean_x)*50,
-                                 (history[-1, 1])+mean_y)*50,
-                                node_circle_size,
-                                facecolor='g',
-                                edgecolor='k',
-                                lw=circle_edge_width,
-                                zorder=3)
+            if mean_x is not None and mean_y is not None:    
+                circle = plt.Circle(((history[-1, 0]+mean_x)*50,
+                                    (history[-1, 1]+mean_y)*50),
+                                    node_circle_size,
+                                    facecolor='g',
+                                    edgecolor='k',
+                                    lw=circle_edge_width,
+                                    zorder=3)
+            else:
+                circle = plt.Circle((history[-1, 0],
+                                    history[-1, 1]),
+                                    0.3,
+                                    facecolor='g',
+                                    edgecolor='k',
+                                    lw=0.5,
+                                    zorder=3)
             ax.add_artist(circle)
 
     ax.axis('equal')

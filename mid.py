@@ -114,7 +114,7 @@ class MID():
                 eval_fde_batch_errors = []
 
                 ph = self.hyperparams['prediction_horizon']
-                min_hl = self.hyperparams['minimum_history_length']
+                min_hl = self.hyperparams['minimum_history_length'] if self.config.sdd_longterm and self.config['dataset'] == 'sdd' else 7
                 max_hl = self.hyperparams['maximum_history_length']
 
                 """
@@ -123,19 +123,20 @@ class MID():
                 min_ft = minimum future timesteps (prediction horizon)
                 max_ft = maximum future timesteps (predition horizon)
                 """
+                sc = 1
                 for i, scene in enumerate(self.eval_scenes):
                     print(f"----- Evaluating Scene {i + 1}/{len(self.eval_scenes)}")
                     for t in tqdm(range(0, scene.timesteps, 10)):
                         timesteps = np.arange(t,t+10)
                         batch = get_timesteps_data(env=self.eval_env, scene=scene, t=timesteps, node_type=node_type, state=self.hyperparams['state'],
                                        pred_state=self.hyperparams['pred_state'], edge_types=self.eval_env.get_edge_types(),
-                                       min_ht=min_hl, max_ht=max_hl, min_ft=2, max_ft=ph, hyperparams=self.hyperparams)
+                                       min_ht=min_hl, max_ht=max_hl, min_ft=12, max_ft=ph, hyperparams=self.hyperparams)
                         if batch is None:
                             continue
                         test_batch = batch[0]
                         nodes = batch[1]
                         timesteps_o = batch[2]
-                        traj_pred = self.model.generate(test_batch, node_type, num_points=self.hyperparams['prediction_horizon'], sample=20,bestof=True) # B * 20 * 12 * 2
+                        traj_pred = self.model.generate(test_batch, node_type, num_points=ph, sample=20,bestof=True) # B * 20 * 12 * 2
 
                         predictions = traj_pred
                         predictions_dict = {}
@@ -169,8 +170,9 @@ class MID():
                         except OSError:
                             if not os.path.isdir('images'):
                                 raise
-                        plt.savefig('images/train_traj_epoch'+str(epoch)+'_scene'+str(i)+'.png')
-                        wandb.log({"train/traj_image": wandb.Image(fig), "scene": str(i)}, step=epoch)
+                        plt.savefig('images/train_traj_epoch'+str(epoch)+'_scene'+str(sc)+'.png')
+                        wandb.log({"train/traj_image": wandb.Image(fig), "scene": str(sc)}, step=epoch)
+                        sc += 1
                         plt.close()
 
                 ade = np.mean(eval_ade_batch_errors)
@@ -207,6 +209,13 @@ class MID():
     def eval(self):
         epoch = self.config.eval_at
 
+        if wandb.run is None and self.config.use_wandb:
+            wandb.init(settings=wandb.Settings(start_method="thread"),
+                       project="myMID", config=self.config,
+                       group=self.config['dataset'],
+                       job_type=self.config['dataset'],
+                       tags=None, name=None)
+
         for j in range(5):
 
             node_type = "PEDESTRIAN"
@@ -214,10 +223,8 @@ class MID():
             eval_fde_batch_errors = []
             ph = self.hyperparams['prediction_horizon']
             max_hl = self.hyperparams['maximum_history_length']
-            min_hl = self.hyperparams['minimum_history_length']
-
-
-
+            min_hl = self.hyperparams['minimum_history_length'] if self.config.sdd_longterm and self.config['dataset'] == 'sdd' else 7
+            sc = 1
             for i, scene in enumerate(self.eval_scenes):
                 print(f"----- Evaluating Scene {i + 1}/{len(self.eval_scenes)}")
                 for t in tqdm(range(0, scene.timesteps, 10)):
@@ -256,8 +263,22 @@ class MID():
                     eval_ade_batch_errors = np.hstack((eval_ade_batch_errors, batch_error_dict[node_type]['ade']))
                     eval_fde_batch_errors = np.hstack((eval_fde_batch_errors, batch_error_dict[node_type]['fde']))
 
-                fig, ax = plt.subplots()
-                # visualize_prediction(i, j, fig, ax, predictions_dict, scene.dt, max_hl, ph, robot_node=None, map=None)
+                """
+                WANDB VISUALIZATION
+                """
+                if self.config.use_wandb:
+                        fig, ax = plt.subplots(figsize=(24, 12))
+                        fig, ax = plot_wandb(fig, ax, predictions_dict, scene.dt, max_hl, ph, map=scene.map, mean_x=scene.mean_x, mean_y=scene.mean_y)
+                        plt.legend(loc='best')
+                        try:
+                            os.makedirs('images')
+                        except OSError:
+                            if not os.path.isdir('images'):
+                                raise
+                        plt.savefig('images/test_traj_epoch'+str(epoch)+'_scene'+str(sc)+'_it'+str(j)+'.png')
+                        wandb.log({"train/test_image": wandb.Image(fig), "scene": str(sc)}, step=epoch)
+                        sc += 1
+                        plt.close()
 
             ade = np.mean(eval_ade_batch_errors)
             fde = np.mean(eval_fde_batch_errors)
@@ -268,6 +289,12 @@ class MID():
             elif self.config.dataset == "sdd":
                 ade = ade * 50
                 fde = fde * 50
+            
+            """WANDB LOGGING"""
+            train_metrics = {'ade': ade,
+                             'fde': fde}
+            if self.config.use_wandb:
+                wandb.log(train_metrics, step=epoch)
 
             print(f"Epoch {epoch} Best Of 20: ADE: {ade} FDE: {fde}")
         #self.log.info(f"Best of 20: Epoch {epoch} ADE: {ade} FDE: {fde}")
@@ -340,7 +367,7 @@ class MID():
         - Builds registrar (see documentation, but nothing crucial)
         - Opens environments
         """
-        self.hyperparams = get_traj_hypers()
+        self.hyperparams = get_traj_hypers(self.config.sdd_longterm, self.config['dataset'])
         self.hyperparams['enc_rnn_dim_edge'] = self.config.encoder_dim//2
         self.hyperparams['enc_rnn_dim_edge_influence'] = self.config.encoder_dim//2
         self.hyperparams['enc_rnn_dim_history'] = self.config.encoder_dim//2

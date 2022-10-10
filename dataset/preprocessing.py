@@ -92,12 +92,6 @@ def get_node_timestep_data(env, scene, t, node, state, pred_state,
     timestep_range_x = np.array([t - max_ht, t])
     timestep_range_y = np.array([t + 1, t + max_ft])
 
-    # Compute and fix WAYPOINTS
-    # N_WAYPOINTS = 1
-    # # TODO
-    # timestep_range_x = np.append(timestep_range_x, (t+max_ft))
-    # timestep_range_y = np.delete(timestep_range_y, np.argwhere(timestep_range_y == 15))
-
     x = node.get(timestep_range_x, state[node.type])
     y = node.get(timestep_range_y, pred_state[node.type])
     first_history_index = (max_ht - node.history_points_at(t)).clip(0)

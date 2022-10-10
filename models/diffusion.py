@@ -37,7 +37,6 @@ def clipped_two_fifth(cosine_s, num_steps):
         f = (1/(-np.sign(i)*(num_steps//2)))*i+1
         clips.append(f/10)
     clips = np.nan_to_num(clips, nan=1)
-    print('clips', clips)
     f0 = math.cos(cosine_s/(1+cosine_s) * (2*math.pi/5)) ** 2
     for i in range(1, num_steps+1):
         tT = i/num_steps
@@ -49,9 +48,6 @@ def clipped_two_fifth(cosine_s, num_steps):
         betas.append(min(1-(alphat/alphatm1)+clips[i-1], 0.999))
     betas = torch.Tensor(betas)
     return betas
-
-def tangent_inv(cosine_s, num_steps):
-    pass
 
 def sigmoid(cosine_s, num_steps):
     lambd = 6
@@ -101,7 +97,7 @@ class VarianceSchedule(Module):
         2. Pads the betas in order to match dimensions
         3. Computes alphas, alpha_logs and sigmas
     """
-    def __init__(self, num_steps, mode='linear',beta_1=1e-4, beta_T=5e-2,cosine_s=8e-3): #original cosine_s=8e-3
+    def __init__(self, num_steps, mode='linear',beta_1=1e-4, beta_T=5e-2,cosine_s=8e-3,cosine_sched='sigmoid_2'): #original cosine_s=8e-3
         super().__init__()
         assert mode in ('linear', 'cosine')
         self.num_steps = num_steps
@@ -112,13 +108,19 @@ class VarianceSchedule(Module):
         if mode == 'linear':
             betas = torch.linspace(beta_1, beta_T, steps=num_steps)
         elif mode == 'cosine':
-            print('COSINE SCHEDULE')
-            # betas = two_fifth_pi_cos_squared(cosine_s, num_steps)
-            # betas = piecewise_cos_inv(cosine_s, num_steps)
-            # betas = tangent_inv(cosine_s, num_steps)
-            # betas = clipped_two_fifth(cosine_s, num_steps)
-            betas = sigmoid_2(cosine_s, num_steps)
-            print(betas)
+            if cosine_sched == 'two_fifth_pi_cos_squared':
+                betas = two_fifth_pi_cos_squared(cosine_s, num_steps)
+            elif cosine_sched == 'piecewise_cos_inv':
+                betas = piecewise_cos_inv(cosine_s, num_steps)
+            elif cosine_sched == 'clipped_two_fifth':
+                betas = clipped_two_fifth(cosine_s, num_steps)
+            elif cosine_sched == 'sigmoid':
+                betas = sigmoid(cosine_s, num_steps)
+            elif cosine_sched == 'sigmoid_2':
+                betas = sigmoid_2(cosine_s, num_steps)
+            else:
+                print('Warning: incorrect cosine schedule, rolling back on sigmoid')
+                betas = sigmoid(cosine_s, num_steps)
 
         betas = torch.cat([torch.zeros([1]), betas], dim=0)     # Padding
 
@@ -214,10 +216,10 @@ class TransformerConcatLinear(Module):
     Methods:
     forward(x,beta,context): nn.Linear : forward pass for the decoder model
     """
-    def __init__(self, point_dim, context_dim, tf_layer, residual):
+    def __init__(self, point_dim, context_dim, tf_layer, residual, longterm=False, dataset=None):
         super().__init__()
         self.residual = residual
-        self.pos_emb = PositionalEncoding(d_model=2*context_dim, dropout=0.1, max_len=30)
+        self.pos_emb = PositionalEncoding(d_model=2*context_dim, dropout=0.1, max_len=30 if longterm and dataset=='sdd' else 24)
         self.concat1 = ConcatSquashLinear(2,2*context_dim,context_dim+3)
         self.layer = nn.TransformerEncoderLayer(d_model=2*context_dim, nhead=4, dim_feedforward=4*context_dim)
         self.transformer_encoder = nn.TransformerEncoder(self.layer, num_layers=tf_layer)
