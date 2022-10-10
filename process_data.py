@@ -17,6 +17,8 @@ from environment.map import Map
 
 # For debug reasons
 from pprint import pprint
+import warnings
+warnings.filterwarnings('ignore')
 
 desired_max_time = 100
 pred_indices = [2, 3]

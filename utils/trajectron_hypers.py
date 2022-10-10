@@ -8,9 +8,9 @@ def get_traj_hypers():
     'learning_rate_style': 'exp',
     'min_learning_rate': 1e-05,
     'learning_decay_rate': 0.99999,
-    'prediction_horizon': 12,
+    'prediction_horizon': 29,
     'minimum_history_length': 1,
-    'maximum_history_length': 7,
+    'maximum_history_length': 5,
     'map_encoder':
         {'PEDESTRIAN':
             {'heading_state_index': 6,
@@ -87,5 +87,5 @@ def get_traj_hypers():
     'learning_rate': 0.01,
     'npl_rate': 0.8,
     'K': 80,
-    'tao': 0.4}
+    'tao': 1}
     return hypers

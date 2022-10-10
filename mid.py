@@ -114,23 +114,28 @@ class MID():
                 eval_fde_batch_errors = []
 
                 ph = self.hyperparams['prediction_horizon']
+                min_hl = self.hyperparams['minimum_history_length']
                 max_hl = self.hyperparams['maximum_history_length']
 
-
+                """
+                min_ht = minimum history timesteps
+                max_ht = maximum history timesteps
+                min_ft = minimum future timesteps (prediction horizon)
+                max_ft = maximum future timesteps (predition horizon)
+                """
                 for i, scene in enumerate(self.eval_scenes):
                     print(f"----- Evaluating Scene {i + 1}/{len(self.eval_scenes)}")
                     for t in tqdm(range(0, scene.timesteps, 10)):
                         timesteps = np.arange(t,t+10)
                         batch = get_timesteps_data(env=self.eval_env, scene=scene, t=timesteps, node_type=node_type, state=self.hyperparams['state'],
                                        pred_state=self.hyperparams['pred_state'], edge_types=self.eval_env.get_edge_types(),
-                                       min_ht=7, max_ht=self.hyperparams['maximum_history_length'], min_ft=12,
-                                       max_ft=12, hyperparams=self.hyperparams)
+                                       min_ht=min_hl, max_ht=max_hl, min_ft=2, max_ft=ph, hyperparams=self.hyperparams)
                         if batch is None:
                             continue
                         test_batch = batch[0]
                         nodes = batch[1]
                         timesteps_o = batch[2]
-                        traj_pred = self.model.generate(test_batch, node_type, num_points=12, sample=20,bestof=True) # B * 20 * 12 * 2
+                        traj_pred = self.model.generate(test_batch, node_type, num_points=self.hyperparams['prediction_horizon'], sample=20,bestof=True) # B * 20 * 12 * 2
 
                         predictions = traj_pred
                         predictions_dict = {}
@@ -209,22 +214,25 @@ class MID():
             eval_fde_batch_errors = []
             ph = self.hyperparams['prediction_horizon']
             max_hl = self.hyperparams['maximum_history_length']
+            min_hl = self.hyperparams['minimum_history_length']
+
 
 
             for i, scene in enumerate(self.eval_scenes):
                 print(f"----- Evaluating Scene {i + 1}/{len(self.eval_scenes)}")
                 for t in tqdm(range(0, scene.timesteps, 10)):
                     timesteps = np.arange(t,t+10)
-                    batch = get_timesteps_data(env=self.eval_env, scene=scene, t=timesteps, node_type=node_type, state=self.hyperparams['state'],
-                                   pred_state=self.hyperparams['pred_state'], edge_types=self.eval_env.get_edge_types(),
-                                   min_ht=7, max_ht=self.hyperparams['maximum_history_length'], min_ft=12,
-                                   max_ft=12, hyperparams=self.hyperparams)
+                    batch = get_timesteps_data(env=self.eval_env, scene=scene, t=timesteps,
+                                            node_type=node_type, state=self.hyperparams['state'],
+                                            pred_state=self.hyperparams['pred_state'], edge_types=self.eval_env.get_edge_types(),
+                                            min_ht=min_hl, max_ht=max_hl, min_ft=12,
+                                            max_ft=ph, hyperparams=self.hyperparams)
                     if batch is None:
                         continue
                     test_batch = batch[0]
                     nodes = batch[1]
                     timesteps_o = batch[2]
-                    traj_pred = self.model.generate(test_batch, node_type, num_points=12, sample=20,bestof=True) # B * 20 * 12 * 2
+                    traj_pred = self.model.generate(test_batch, node_type, num_points=ph, sample=20,bestof=True) # B * 20 * 12 * 2
 
                     predictions = traj_pred
                     predictions_dict = {}
