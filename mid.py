@@ -366,7 +366,7 @@ class MID():
         - Builds registrar (see documentation, but nothing crucial)
         - Opens environments
         """
-        self.hyperparams = get_traj_hypers()
+        self.hyperparams = get_traj_hypers(self.config.sdd_longterm, self.config['dataset'])
         self.hyperparams['enc_rnn_dim_edge'] = self.config.encoder_dim//2
         self.hyperparams['enc_rnn_dim_edge_influence'] = self.config.encoder_dim//2
         self.hyperparams['enc_rnn_dim_history'] = self.config.encoder_dim//2

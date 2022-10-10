@@ -23,6 +23,9 @@ eval_mode: False
 # Visualization
 use_wandb: True
 
+# SDD longterm prediction
+sdd_longterm: False
+
 ############### Trajectron++ Config #################
 # Misc
 conf: None

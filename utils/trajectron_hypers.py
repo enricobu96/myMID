@@ -2,15 +2,15 @@
 IMPORTANT. Utility function to get hyperparameters for the model (the Trajectron++ part). Complementary with the config file in configs/
 """
 
-def get_traj_hypers():
+def get_traj_hypers(longterm, dataset):
     hypers = {   'batch_size': 256,
     'grad_clip': 1.0, # clips gradient to 1
     'learning_rate_style': 'exp',
     'min_learning_rate': 1e-05,
     'learning_decay_rate': 0.9999,
-    'prediction_horizon': 29,
+    'prediction_horizon': 29 if longterm and dataset=='sdd' else 12,
     'minimum_history_length': 1,
-    'maximum_history_length': 5,
+    'maximum_history_length': 5 if longterm and dataset=='sdd' else 7,
     'map_encoder':
         {'PEDESTRIAN':
             {'heading_state_index': 6,
@@ -87,5 +87,5 @@ def get_traj_hypers():
     'learning_rate': 0.01,
     'npl_rate': 0.8,
     'K': 80,
-    'tao': 1}
+    'tao': 1 if longterm and dataset=='sdd' else 0.4}
     return hypers
