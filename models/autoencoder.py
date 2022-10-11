@@ -31,13 +31,22 @@ class AutoEncoder(Module):
         self.diffnet = getattr(diffusion, config.diffnet)
 
         self.diffusion = DiffusionTraj(
-            net = self.diffnet(point_dim=2, context_dim=config.encoder_dim, tf_layer=config.tf_layer, residual=False, longterm=self.config.sdd_longterm, dataset=self.config['dataset']),
+            net = self.diffnet(point_dim=2,
+                context_dim=config.encoder_dim,
+                tf_layer=config.tf_layer,
+                residual=False,
+                longterm=self.config.sdd_longterm,
+                dataset=self.config['dataset'],
+                learn_sigmas=self.config.learn_sigmas
+            ),
             var_sched = VarianceSchedule(
                 num_steps=100,
                 beta_T=5e-2,
                 mode=self.config.variance_sched,
                 cosine_sched=self.config.cosine_sched
-            )
+            ),
+            learn_sigmas=self.config.learn_sigmas,
+            lambda_vlb=self.config.lambda_vlb
         )
 
     def encode(self, batch,node_type):

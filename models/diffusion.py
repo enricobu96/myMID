@@ -73,6 +73,9 @@ class VarianceSchedule(Module):
             sigmas_inflex[i] = ((1 - alpha_bars[i-1]) / (1 - alpha_bars[i])) * betas[i]
         sigmas_inflex = torch.sqrt(sigmas_inflex)
 
+        self.betas_var = betas
+        self.alpha_bars_var = alpha_bars
+
         self.register_buffer('betas', betas)
         self.register_buffer('alphas', alphas)
         self.register_buffer('alpha_bars', alpha_bars)
@@ -88,8 +91,16 @@ class VarianceSchedule(Module):
         sigmas = self.sigmas_flex[t] * flexibility + self.sigmas_inflex[t] * (1 - flexibility)
         return sigmas
     
-    def get_sigmas_learning(self, t, net):
-        pass
+    def get_sigmas_learning(self, v, t):
+        # equation 15
+        beta_bars = []
+        for i in range(0, len(self.alpha_bars_var[t])):
+            if i == 0:
+                beta_bars.append((1/(1-self.alpha_bars_var[t][i].item()))*self.betas_var[t][i].item())
+            else:
+                beta_bars.append(((1 - self.alpha_bars_var[t-1][i].item())/(1-self.alpha_bars_var[t][i].item()))*self.betas_var[t][i].item())
+        sigmas = torch.exp(v*torch.log(self.betas_var[t])+(torch.ones_like(v)-v)*torch.log(beta_bars))
+        return sigmas
 
 class TransformerConcatLinear(Module):
     """
@@ -111,7 +122,7 @@ class TransformerConcatLinear(Module):
     Methods:
     forward(x,beta,context): nn.Linear : forward pass for the decoder model
     """
-    def __init__(self, point_dim, context_dim, tf_layer, residual, longterm=False, dataset=None):
+    def __init__(self, point_dim, context_dim, tf_layer, residual, longterm=False, dataset=None, learn_sigmas=False):
         super().__init__()
         self.residual = residual
         self.pos_emb = PositionalEncoding(d_model=2*context_dim, dropout=0.1, max_len=30 if longterm and dataset=='sdd' else 24)
@@ -120,7 +131,7 @@ class TransformerConcatLinear(Module):
         self.transformer_encoder = nn.TransformerEncoder(self.layer, num_layers=tf_layer)
         self.concat3 = ConcatSquashLinear(2*context_dim,context_dim,context_dim+3)
         self.concat4 = ConcatSquashLinear(context_dim,context_dim//2,context_dim+3)
-        self.linear = ConcatSquashLinear(context_dim//2, 2, context_dim+3)
+        self.linear = ConcatSquashLinear(context_dim//2, 2 if not learn_sigmas else 4, context_dim+3)
         #self.linear = nn.Linear(128,2)
 
 
@@ -145,13 +156,16 @@ class DiffusionTraj(Module):
     """
     DiffusionTraj class, used as diffusion model for trajectories (crucial part of the project). This contains in turn the net (in this case TransformerConcatLinear) and the variance schedule.
     """
-    def __init__(self, net, var_sched:VarianceSchedule):
+    def __init__(self, net, var_sched:VarianceSchedule, learn_sigmas=False, lambda_vlb=1e-4):
         super().__init__()
         self.net = net
         self.var_sched = var_sched
+        self.learn_sigmas = learn_sigmas
+        self.lambda_vlb = lambda_vlb
 
     def get_loss(self, x_0, context, t=None):
-
+        
+        # Compute LOSS_SIMPLE (old code)
         batch_size, _, point_dim = x_0.size()
         if t == None:
             t = self.var_sched.uniform_sample_t(batch_size)
@@ -164,8 +178,27 @@ class DiffusionTraj(Module):
 
         e_rand = torch.randn_like(x_0).cuda()  # (B, N, d)
 
-        e_theta = self.net(c0 * x_0 + c1 * e_rand, beta=beta, context=context)
-        loss = F.mse_loss(e_theta.view(-1, point_dim), e_rand.view(-1, point_dim), reduction='mean')
+        out = self.net(c0 * x_0 + c1 * e_rand, beta=beta, context=context)
+
+        if self.learn_sigmas:
+            e_theta, variance_v = out.split(2, dim=2)
+            sigmas = self.var_sched.get_sigmas_learning(variance_v, t)
+            print(sigmas.size())
+        else:
+            e_theta = out
+
+        loss_simple = F.mse_loss(e_theta.view(-1, point_dim), e_rand.view(-1, point_dim), reduction='mean')
+        
+        # Compute LOSS_VLB
+        # TODO implement
+        
+        loss_vlb = 0
+
+        if self.learn_sigmas:
+            loss = loss_simple + self.lambda_vlb*loss_vlb
+        else:
+            loss = loss_simple
+
         return loss
 
     def sample(self, num_points, context, sample, bestof, point_dim=2, flexibility=0.0, ret_traj=False):
@@ -188,7 +221,15 @@ class DiffusionTraj(Module):
 
                 x_t = traj[t]
                 beta = self.var_sched.betas[[t]*batch_size]
-                e_theta = self.net(x_t, beta=beta, context=context)
+                out = self.net(x_t, beta=beta, context=context)
+
+                if self.learn_sigmas:
+                    e_theta, variance_v = out.split(2, dim=2)
+                    sigmas = self.var_sched.get_sigmas_learning(variance_v, t)
+
+                else:
+                    e_theta = out
+
                 x_next = c0 * (x_t - c1 * e_theta) + sigma * z
                 traj[t-1] = x_next.detach()     # Stop gradient and save trajectory.
                 traj[t] = traj[t].cpu()         # Move previous output to CPU memory.
