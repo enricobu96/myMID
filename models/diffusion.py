@@ -6,75 +6,12 @@ import torch.nn as nn
 from .common import *
 import pdb
 
-def two_fifth_pi_cos_squared(cosine_s, num_steps):
-    betas = []
-    f0 = math.cos(cosine_s/(1+cosine_s) * (2*math.pi/5)) ** 2
-    for i in range(1, num_steps+1):
-        tT = i/num_steps
-        ft = math.cos((tT+cosine_s)/(1+cosine_s) * (2*math.pi/5)) ** 2
-        alphat = ft/f0
-        tTm1 = (i-1)/num_steps
-        ftm1 = math.cos((tTm1+cosine_s)/(1+cosine_s) * (2*math.pi/5)) ** 2
-        alphatm1 = ftm1/f0
-        betas.append(min(1-(alphat/alphatm1), 0.999))
-    betas = torch.Tensor(betas)
-    return betas
-
-def piecewise_cos_inv(cosine_s, num_steps):
-    betas = [0]
-    a = 2
-    for i in range(1, num_steps+1):
-        c_prev = math.cos(((betas[i-1]/num_steps + cosine_s)/(1+cosine_s))*math.pi/a)
-        acos = np.clip((1-i)*c_prev, -1, 1)
-        betas.append((math.acos(acos)*(a/math.pi)*(1+cosine_s) - cosine_s)*num_steps)
-    betas = torch.Tensor(betas)
-    return betas
-
-def clipped_two_fifth(cosine_s, num_steps):
-    betas = []
-    clips = []
-    for i in range(-num_steps//2, num_steps//2):
-        f = (1/(-np.sign(i)*(num_steps//2)))*i+1
-        clips.append(f/10)
-    clips = np.nan_to_num(clips, nan=1)
-    f0 = math.cos(cosine_s/(1+cosine_s) * (2*math.pi/5)) ** 2
-    for i in range(1, num_steps+1):
-        tT = i/num_steps
-        ft = math.cos((tT+cosine_s)/(1+cosine_s) * (2*math.pi/5)) ** 2
-        alphat = ft/f0
-        tTm1 = (i-1)/num_steps
-        ftm1 = math.cos((tTm1+cosine_s)/(1+cosine_s) * (2*math.pi/5)) ** 2
-        alphatm1 = ftm1/f0
-        betas.append(min(1-(alphat/alphatm1)+clips[i-1], 0.999))
-    betas = torch.Tensor(betas)
-    return betas
-
-def sigmoid(cosine_s, num_steps):
-    lambd = 6
-    eps = 0.05
-    norm = 10
-    s = lambda x : 1/(1+math.exp(-lambd*(x-eps)))
-    betas = []
-    for i in range(-num_steps//2, num_steps//2):
-        betas.append(s(i/(num_steps))/norm)
-    betas = torch.Tensor(betas)
-    return betas
-
-def sigmoid_2(cosine_s, num_steps):
-    lambd = 16
-    eps = .7
-    norm = 16
-    s = lambda x : 1/(1+math.exp(-lambd*(x-eps)))
-    betas = []
-    for i in range(-num_steps//2, num_steps//2):
-        betas.append(s(i/(num_steps))/norm)
-    betas = torch.Tensor(betas)
-    return betas
-
-
 class VarianceSchedule(Module):
     """
-    Class representing the variance schedule.
+    Class representing the variance schedule. In the original formulation, this class works both for the
+    noise schedule and the variance schedule: in fact, the authors followed the DDPM paper, in which the
+    sigmas (variances) are not learnt. In the new formulation (TODO), get_sigmas will need to return
+    the learnt sigmas (or something like that).
 
     Args:
         num_steps: int : number of steps in the variance schedule
@@ -150,51 +87,9 @@ class VarianceSchedule(Module):
         assert 0 <= flexibility and flexibility <= 1
         sigmas = self.sigmas_flex[t] * flexibility + self.sigmas_inflex[t] * (1 - flexibility)
         return sigmas
-
-class TrajNet(Module):
-    """
-    TrajNet class, apparently not used in this project; TransformerConcatLinear is used instead.
-    """
-    def __init__(self, point_dim, context_dim, residual):
-        super().__init__()
-        self.act = F.leaky_relu
-        self.residual = residual
-        self.layers = ModuleList([
-            ConcatSquashLinear(2, 128, context_dim+3),
-            ConcatSquashLinear(128, 256, context_dim+3),
-            ConcatSquashLinear(256, 512, context_dim+3),
-            ConcatSquashLinear(512, 256, context_dim+3),
-            ConcatSquashLinear(256, 128, context_dim+3),
-            ConcatSquashLinear(128, 2, context_dim+3),
-
-        ])
-
-    def forward(self, x, beta, context):
-        """
-        Args:
-            x:  Point clouds at some timestep t, (B, N, d).
-            beta:     Time. (B, ).
-            context:  Shape latents. (B, F).
-        """
-        batch_size = x.size(0)
-        beta = beta.view(batch_size, 1, 1)          # (B, 1, 1)
-        context = context.view(batch_size, 1, -1)   # (B, 1, F)
-
-        time_emb = torch.cat([beta, torch.sin(beta), torch.cos(beta)], dim=-1)  # (B, 1, 3)
-        ctx_emb = torch.cat([time_emb, context], dim=-1)    # (B, 1, F+3)
-
-        out = x
-        #pdb.set_trace()
-        for i, layer in enumerate(self.layers):
-            out = layer(ctx=ctx_emb, x=out)
-            if i < len(self.layers) - 1:
-                out = self.act(out)
-
-        if self.residual:
-            return x + out
-        else:
-            return out
-
+    
+    def get_sigmas_learning(self, t, net):
+        pass
 
 class TransformerConcatLinear(Module):
     """
@@ -246,6 +141,138 @@ class TransformerConcatLinear(Module):
         trans = self.concat4(ctx_emb, trans)
         return self.linear(ctx_emb, trans)
 
+class DiffusionTraj(Module):
+    """
+    DiffusionTraj class, used as diffusion model for trajectories (crucial part of the project). This contains in turn the net (in this case TransformerConcatLinear) and the variance schedule.
+    """
+    def __init__(self, net, var_sched:VarianceSchedule):
+        super().__init__()
+        self.net = net
+        self.var_sched = var_sched
+
+    def get_loss(self, x_0, context, t=None):
+
+        batch_size, _, point_dim = x_0.size()
+        if t == None:
+            t = self.var_sched.uniform_sample_t(batch_size)
+
+        alpha_bar = self.var_sched.alpha_bars[t]
+        beta = self.var_sched.betas[t].cuda()
+
+        c0 = torch.sqrt(alpha_bar).view(-1, 1, 1).cuda()    # (B, 1, 1)
+        c1 = torch.sqrt(1 - alpha_bar).view(-1, 1, 1).cuda()   # (B, 1, 1)
+
+        e_rand = torch.randn_like(x_0).cuda()  # (B, N, d)
+
+        e_theta = self.net(c0 * x_0 + c1 * e_rand, beta=beta, context=context)
+        loss = F.mse_loss(e_theta.view(-1, point_dim), e_rand.view(-1, point_dim), reduction='mean')
+        return loss
+
+    def sample(self, num_points, context, sample, bestof, point_dim=2, flexibility=0.0, ret_traj=False):
+        traj_list = []
+        for i in range(sample):
+            batch_size = context.size(0)
+            if bestof:
+                x_T = torch.randn([batch_size, num_points, point_dim]).to(context.device)
+            else:
+                x_T = torch.zeros([batch_size, num_points, point_dim]).to(context.device)
+            traj = {self.var_sched.num_steps: x_T}
+            for t in range(self.var_sched.num_steps, 0, -1):
+                z = torch.randn_like(x_T) if t > 1 else torch.zeros_like(x_T)
+                alpha = self.var_sched.alphas[t]
+                alpha_bar = self.var_sched.alpha_bars[t]
+                sigma = self.var_sched.get_sigmas(t, flexibility)
+
+                c0 = 1.0 / torch.sqrt(alpha)
+                c1 = (1 - alpha) / torch.sqrt(1 - alpha_bar)
+
+                x_t = traj[t]
+                beta = self.var_sched.betas[[t]*batch_size]
+                e_theta = self.net(x_t, beta=beta, context=context)
+                x_next = c0 * (x_t - c1 * e_theta) + sigma * z
+                traj[t-1] = x_next.detach()     # Stop gradient and save trajectory.
+                traj[t] = traj[t].cpu()         # Move previous output to CPU memory.
+                if not ret_traj:
+                   del traj[t]
+
+            if ret_traj:
+                traj_list.append(traj)
+            else:
+                traj_list.append(traj[0])
+        return torch.stack(traj_list)
+
+
+"""
+NOISE SCHEDULE FUNCTIONS
+"""
+def two_fifth_pi_cos_squared(cosine_s, num_steps):
+    betas = []
+    f0 = math.cos(cosine_s/(1+cosine_s) * (2*math.pi/5)) ** 2
+    for i in range(1, num_steps+1):
+        tT = i/num_steps
+        ft = math.cos((tT+cosine_s)/(1+cosine_s) * (2*math.pi/5)) ** 2
+        alphat = ft/f0
+        tTm1 = (i-1)/num_steps
+        ftm1 = math.cos((tTm1+cosine_s)/(1+cosine_s) * (2*math.pi/5)) ** 2
+        alphatm1 = ftm1/f0
+        betas.append(min(1-(alphat/alphatm1), 0.999))
+    betas = torch.Tensor(betas)
+    return betas
+
+def piecewise_cos_inv(cosine_s, num_steps):
+    betas = [0]
+    a = 2
+    for i in range(1, num_steps+1):
+        c_prev = math.cos(((betas[i-1]/num_steps + cosine_s)/(1+cosine_s))*math.pi/a)
+        acos = np.clip((1-i)*c_prev, -1, 1)
+        betas.append((math.acos(acos)*(a/math.pi)*(1+cosine_s) - cosine_s)*num_steps)
+    betas = torch.Tensor(betas)
+    return betas
+
+def clipped_two_fifth(cosine_s, num_steps):
+    betas = []
+    clips = []
+    for i in range(-num_steps//2, num_steps//2):
+        f = (1/(-np.sign(i)*(num_steps//2)))*i+1
+        clips.append(f/10)
+    clips = np.nan_to_num(clips, nan=1)
+    f0 = math.cos(cosine_s/(1+cosine_s) * (2*math.pi/5)) ** 2
+    for i in range(1, num_steps+1):
+        tT = i/num_steps
+        ft = math.cos((tT+cosine_s)/(1+cosine_s) * (2*math.pi/5)) ** 2
+        alphat = ft/f0
+        tTm1 = (i-1)/num_steps
+        ftm1 = math.cos((tTm1+cosine_s)/(1+cosine_s) * (2*math.pi/5)) ** 2
+        alphatm1 = ftm1/f0
+        betas.append(min(1-(alphat/alphatm1)+clips[i-1], 0.999))
+    betas = torch.Tensor(betas)
+    return betas
+
+def sigmoid(cosine_s, num_steps):
+    lambd = 6
+    eps = 0.05
+    norm = 10
+    s = lambda x : 1/(1+math.exp(-lambd*(x-eps)))
+    betas = []
+    for i in range(-num_steps//2, num_steps//2):
+        betas.append(s(i/(num_steps))/norm)
+    betas = torch.Tensor(betas)
+    return betas
+
+def sigmoid_2(cosine_s, num_steps):
+    lambd = 16
+    eps = .7
+    norm = 16
+    s = lambda x : 1/(1+math.exp(-lambd*(x-eps)))
+    betas = []
+    for i in range(-num_steps//2, num_steps//2):
+        betas.append(s(i/(num_steps))/norm)
+    betas = torch.Tensor(betas)
+    return betas
+
+"""
+UNUSED/UNIMPORTANT STUFF
+"""
 class TransformerLinear(Module):
     """
     TransformerLinear class, apparently not used in this project; TransformerConcatLinear is used instead.
@@ -308,65 +335,46 @@ class LinearDecoder(Module):
                 out = self.act(out)
         return out
 
-
-
-class DiffusionTraj(Module):
+class TrajNet(Module):
     """
-    DiffusionTraj class, used as diffusion model for trajectories (crucial part of the project). This contains in turn the net (in this case TransformerConcatLinear) and the variance schedule.
+    TrajNet class, apparently not used in this project; TransformerConcatLinear is used instead.
     """
-    def __init__(self, net, var_sched:VarianceSchedule):
+    def __init__(self, point_dim, context_dim, residual):
         super().__init__()
-        self.net = net
-        self.var_sched = var_sched
+        self.act = F.leaky_relu
+        self.residual = residual
+        self.layers = ModuleList([
+            ConcatSquashLinear(2, 128, context_dim+3),
+            ConcatSquashLinear(128, 256, context_dim+3),
+            ConcatSquashLinear(256, 512, context_dim+3),
+            ConcatSquashLinear(512, 256, context_dim+3),
+            ConcatSquashLinear(256, 128, context_dim+3),
+            ConcatSquashLinear(128, 2, context_dim+3),
 
-    def get_loss(self, x_0, context, t=None):
+        ])
 
-        batch_size, _, point_dim = x_0.size()
-        if t == None:
-            t = self.var_sched.uniform_sample_t(batch_size)
+    def forward(self, x, beta, context):
+        """
+        Args:
+            x:  Point clouds at some timestep t, (B, N, d).
+            beta:     Time. (B, ).
+            context:  Shape latents. (B, F).
+        """
+        batch_size = x.size(0)
+        beta = beta.view(batch_size, 1, 1)          # (B, 1, 1)
+        context = context.view(batch_size, 1, -1)   # (B, 1, F)
 
-        alpha_bar = self.var_sched.alpha_bars[t]
-        beta = self.var_sched.betas[t].cuda()
+        time_emb = torch.cat([beta, torch.sin(beta), torch.cos(beta)], dim=-1)  # (B, 1, 3)
+        ctx_emb = torch.cat([time_emb, context], dim=-1)    # (B, 1, F+3)
 
-        c0 = torch.sqrt(alpha_bar).view(-1, 1, 1).cuda()    # (B, 1, 1)
-        c1 = torch.sqrt(1 - alpha_bar).view(-1, 1, 1).cuda()   # (B, 1, 1)
+        out = x
+        #pdb.set_trace()
+        for i, layer in enumerate(self.layers):
+            out = layer(ctx=ctx_emb, x=out)
+            if i < len(self.layers) - 1:
+                out = self.act(out)
 
-        e_rand = torch.randn_like(x_0).cuda()  # (B, N, d)
-
-
-        e_theta = self.net(c0 * x_0 + c1 * e_rand, beta=beta, context=context)
-        loss = F.mse_loss(e_theta.view(-1, point_dim), e_rand.view(-1, point_dim), reduction='mean')
-        return loss
-
-    def sample(self, num_points, context, sample, bestof, point_dim=2, flexibility=0.0, ret_traj=False):
-        traj_list = []
-        for i in range(sample):
-            batch_size = context.size(0)
-            if bestof:
-                x_T = torch.randn([batch_size, num_points, point_dim]).to(context.device)
-            else:
-                x_T = torch.zeros([batch_size, num_points, point_dim]).to(context.device)
-            traj = {self.var_sched.num_steps: x_T}
-            for t in range(self.var_sched.num_steps, 0, -1):
-                z = torch.randn_like(x_T) if t > 1 else torch.zeros_like(x_T)
-                alpha = self.var_sched.alphas[t]
-                alpha_bar = self.var_sched.alpha_bars[t]
-                sigma = self.var_sched.get_sigmas(t, flexibility)
-
-                c0 = 1.0 / torch.sqrt(alpha)
-                c1 = (1 - alpha) / torch.sqrt(1 - alpha_bar)
-
-                x_t = traj[t]
-                beta = self.var_sched.betas[[t]*batch_size]
-                e_theta = self.net(x_t, beta=beta, context=context)
-                x_next = c0 * (x_t - c1 * e_theta) + sigma * z
-                traj[t-1] = x_next.detach()     # Stop gradient and save trajectory.
-                traj[t] = traj[t].cpu()         # Move previous output to CPU memory.
-                if not ret_traj:
-                   del traj[t]
-
-            if ret_traj:
-                traj_list.append(traj)
-            else:
-                traj_list.append(traj[0])
-        return torch.stack(traj_list)
+        if self.residual:
+            return x + out
+        else:
+            return out
