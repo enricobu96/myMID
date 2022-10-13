@@ -156,12 +156,13 @@ class DiffusionTraj(Module):
     """
     DiffusionTraj class, used as diffusion model for trajectories (crucial part of the project). This contains in turn the net (in this case TransformerConcatLinear) and the variance schedule.
     """
-    def __init__(self, net, var_sched:VarianceSchedule, learn_sigmas=False, lambda_vlb=1e-4):
+    def __init__(self, net, var_sched:VarianceSchedule, learn_sigmas=False, lambda_vlb=1e-4, device='cpu'):
         super().__init__()
         self.net = net
         self.var_sched = var_sched
         self.learn_sigmas = learn_sigmas
         self.lambda_vlb = lambda_vlb
+        self.device = device
 
     def get_loss(self, x_0, context, t=None):
         
@@ -171,12 +172,20 @@ class DiffusionTraj(Module):
             t = self.var_sched.uniform_sample_t(batch_size)
 
         alpha_bar = self.var_sched.alpha_bars[t]
-        beta = self.var_sched.betas[t].cuda()
+        if self.device == 'cpu':
+            beta = self.var_sched.betas[t].to('cpu')
 
-        c0 = torch.sqrt(alpha_bar).view(-1, 1, 1).cuda()    # (B, 1, 1)
-        c1 = torch.sqrt(1 - alpha_bar).view(-1, 1, 1).cuda()   # (B, 1, 1)
+            c0 = torch.sqrt(alpha_bar).view(-1, 1, 1).to('cpu')    # (B, 1, 1)
+            c1 = torch.sqrt(1 - alpha_bar).view(-1, 1, 1).to('cpu')   # (B, 1, 1)
 
-        e_rand = torch.randn_like(x_0).cuda()  # (B, N, d)
+            e_rand = torch.randn_like(x_0).to('cpu')  # (B, N, d)
+        else:
+            beta = self.var_sched.betas[t].cuda()
+
+            c0 = torch.sqrt(alpha_bar).view(-1, 1, 1).cuda()    # (B, 1, 1)
+            c1 = torch.sqrt(1 - alpha_bar).view(-1, 1, 1).cuda()   # (B, 1, 1)
+
+            e_rand = torch.randn_like(x_0).cuda()  # (B, N, d)
 
         out = self.net(c0 * x_0 + c1 * e_rand, beta=beta, context=context)
 

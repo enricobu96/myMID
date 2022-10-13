@@ -46,7 +46,8 @@ class AutoEncoder(Module):
                 cosine_sched=self.config.cosine_sched
             ),
             learn_sigmas=self.config.learn_sigmas,
-            lambda_vlb=self.config.lambda_vlb
+            lambda_vlb=self.config.lambda_vlb,
+            device='cpu' if self.config.device=='cpu' and self.config.eval_device=='cpu' else 'cuda'
         )
 
     def encode(self, batch,node_type):
@@ -70,5 +71,8 @@ class AutoEncoder(Module):
          map) = batch
 
         feat_x_encoded = self.encode(batch,node_type) # B * 64
-        loss = self.diffusion.get_loss(y_t.cuda(), feat_x_encoded)
+        if self.config.device=='cpu' and self.config.eval_device=='cpu':
+            loss = self.diffusion.get_loss(y_t.to('cpu'), feat_x_encoded)
+        else:
+            loss = self.diffusion.get_loss(y_t.cuda(), feat_x_encoded)
         return loss
