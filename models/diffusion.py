@@ -42,6 +42,12 @@ class VarianceSchedule(Module):
         self.beta_T = beta_T
         self.mode = mode
 
+        """
+        Building the noise schedule - betas, alphas, alpha bars and simgas.
+        Note that sigmas has two different meanings/usages:
+            - For the non-learned version, sigmas is the variance schedule
+            - For the learned version, sigmas_inflex is used as the beta bars in expression 15 IDDPM to compute the variance
+        """
         if mode == 'linear':
             betas = torch.linspace(beta_1, beta_T, steps=num_steps)
         elif mode == 'cosine':
@@ -73,8 +79,10 @@ class VarianceSchedule(Module):
             sigmas_inflex[i] = ((1 - alpha_bars[i-1]) / (1 - alpha_bars[i])) * betas[i]
         sigmas_inflex = torch.sqrt(sigmas_inflex)
 
+        # Save stuff for the learned version
         self.betas_var = betas
         self.alpha_bars_var = alpha_bars
+        self.beta_bars_var = sigmas_inflex
 
         self.register_buffer('betas', betas)
         self.register_buffer('alphas', alphas)
@@ -86,20 +94,22 @@ class VarianceSchedule(Module):
         ts = np.random.choice(np.arange(1, self.num_steps+1), batch_size)
         return ts.tolist()
 
+    """
+    Gets sigmas for the not-learned version: sigmas are used to compute the variance schedule, which is then constant
+    """
     def get_sigmas(self, t, flexibility):
         assert 0 <= flexibility and flexibility <= 1
         sigmas = self.sigmas_flex[t] * flexibility + self.sigmas_inflex[t] * (1 - flexibility)
         return sigmas
     
+    """
+    Gets sigmas for the learned version: sigmas_inflex becomes the beta bars and is used to compute expression 15 in IDDPM.
+    The expression returns the variances for each step of the DiffusionTraj model.
+    """
     def get_sigmas_learning(self, v, t):
-        # equation 15
-        beta_bars = []
-        for i in range(0, len(self.alpha_bars_var[t])):
-            if i == 0:
-                beta_bars.append((1/(1-self.alpha_bars_var[t][i].item()))*self.betas_var[t][i].item())
-            else:
-                beta_bars.append(((1 - self.alpha_bars_var[t-1][i].item())/(1-self.alpha_bars_var[t][i].item()))*self.betas_var[t][i].item())
-        sigmas = torch.exp(v*torch.log(self.betas_var[t])+(torch.ones_like(v)-v)*torch.log(beta_bars))
+        c0 = torch.log(self.betas_var[t]).view(-1, 1, 1).to(v.device)
+        c1 = torch.log(self.beta_bars_var[t]).view(-1, 1, 1).to(v.device)
+        sigmas = torch.exp(v*c0 + (1-v)*c1)
         return sigmas
 
 class TransformerConcatLinear(Module):
@@ -132,8 +142,6 @@ class TransformerConcatLinear(Module):
         self.concat3 = ConcatSquashLinear(2*context_dim,context_dim,context_dim+3)
         self.concat4 = ConcatSquashLinear(context_dim,context_dim//2,context_dim+3)
         self.linear = ConcatSquashLinear(context_dim//2, 2 if not learn_sigmas else 4, context_dim+3)
-        #self.linear = nn.Linear(128,2)
-
 
     def forward(self, x, beta, context):
         batch_size = x.size(0)
@@ -146,7 +154,6 @@ class TransformerConcatLinear(Module):
         final_emb = x.permute(1,0,2)
         final_emb = self.pos_emb(final_emb)
 
-
         trans = self.transformer_encoder(final_emb).permute(1,0,2)
         trans = self.concat3(ctx_emb, trans)
         trans = self.concat4(ctx_emb, trans)
@@ -154,7 +161,8 @@ class TransformerConcatLinear(Module):
 
 class DiffusionTraj(Module):
     """
-    DiffusionTraj class, used as diffusion model for trajectories (crucial part of the project). This contains in turn the net (in this case TransformerConcatLinear) and the variance schedule.
+    DiffusionTraj class, used as diffusion model for trajectories (crucial part of the project).
+    This contains in turn the net (in this case TransformerConcatLinear) and the variance schedule.
     """
     def __init__(self, net, var_sched:VarianceSchedule, learn_sigmas=False, lambda_vlb=1e-4, device='cpu'):
         super().__init__()
@@ -165,7 +173,6 @@ class DiffusionTraj(Module):
         self.device = device
 
     def get_loss(self, x_0, context, t=None):
-        
         # Compute LOSS_SIMPLE (old code)
         batch_size, _, point_dim = x_0.size()
         if t == None:
@@ -174,17 +181,13 @@ class DiffusionTraj(Module):
         alpha_bar = self.var_sched.alpha_bars[t]
         if self.device == 'cpu':
             beta = self.var_sched.betas[t].to('cpu')
-
             c0 = torch.sqrt(alpha_bar).view(-1, 1, 1).to('cpu')    # (B, 1, 1)
             c1 = torch.sqrt(1 - alpha_bar).view(-1, 1, 1).to('cpu')   # (B, 1, 1)
-
             e_rand = torch.randn_like(x_0).to('cpu')  # (B, N, d)
         else:
             beta = self.var_sched.betas[t].cuda()
-
             c0 = torch.sqrt(alpha_bar).view(-1, 1, 1).cuda()    # (B, 1, 1)
             c1 = torch.sqrt(1 - alpha_bar).view(-1, 1, 1).cuda()   # (B, 1, 1)
-
             e_rand = torch.randn_like(x_0).cuda()  # (B, N, d)
 
         out = self.net(c0 * x_0 + c1 * e_rand, beta=beta, context=context)
@@ -192,7 +195,6 @@ class DiffusionTraj(Module):
         if self.learn_sigmas:
             e_theta, variance_v = out.split(2, dim=2)
             sigmas = self.var_sched.get_sigmas_learning(variance_v, t)
-            print(sigmas.size())
         else:
             e_theta = out
 
