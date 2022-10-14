@@ -300,7 +300,7 @@ class DiffusionTraj(Module):
         # At the first timestep return the decoder NLL,
         # otherwise return KL(q(x_{t-1}|x_t,x_0) || p(x_{t-1}|x_t))
         output = torch.where((torch.tensor(t).to(x_start.device) == 0), decoder_nll, kl)
-        # output = torch.mean(decoder_nll)
+        output = torch.mean(torch.nan_to_num(output, 1))
         return output
 
     def q_posterior_mean_variance(self, x_start, x_t, t):
