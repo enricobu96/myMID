@@ -5,6 +5,7 @@ import numpy as np
 import torch.nn as nn
 from .common import *
 import pdb
+from .diffusion_utils import _extract_into_tensor
 
 class VarianceSchedule(Module):
     """
@@ -89,6 +90,25 @@ class VarianceSchedule(Module):
         self.register_buffer('alpha_bars', alpha_bars)
         self.register_buffer('sigmas_flex', sigmas_flex)
         self.register_buffer('sigmas_inflex', sigmas_inflex)
+
+        # Compute stuff additional stuff for learned version
+        self.alphas_cumprod = torch.cumprod(alphas, axis=0)
+        self.alphas_cumprod_prev = torch.cat([torch.ones(1), self.alphas_cumprod[:-1]])
+        self.posterior_mean_coef1 = (
+            betas * torch.sqrt(self.alphas_cumprod_prev) / (1.0 - self.alphas_cumprod)
+        )
+        self.posterior_mean_coef2 = (
+            (1.0 - self.alphas_cumprod_prev)
+            * torch.sqrt(alphas)
+            / (1.0 - self.alphas_cumprod)
+        )
+        self.posterior_variance = (
+            betas * (1.0 - self.alphas_cumprod_prev) / (1.0 - self.alphas_cumprod)
+        )
+        self.posterior_log_variance_clipped = torch.tensor(np.log( # TODO: fix possibly -inf values
+            np.append(self.posterior_variance[1], self.posterior_variance[1:])
+        ))
+
 
     def uniform_sample_t(self, batch_size):
         ts = np.random.choice(np.arange(1, self.num_steps+1), batch_size)
@@ -199,16 +219,21 @@ class DiffusionTraj(Module):
             e_theta = out
 
         loss_simple = F.mse_loss(e_theta.view(-1, point_dim), e_rand.view(-1, point_dim), reduction='mean')
-        
-        # Compute LOSS_VLB
-        # TODO implement
-        
-        loss_vlb = 0
 
         if self.learn_sigmas:
+            # Compute LOSS_VLB
+            loss_vlb = self.loss_vlb(
+                mean=e_theta,
+                sigma=sigmas,
+                x_start = x_0,
+                x_t = c0 * x_0 + c1 * e_rand,
+                t=t
+                )
+            print('LOSS', loss_vlb)
             loss = loss_simple + self.lambda_vlb*loss_vlb
         else:
             loss = loss_simple
+            print('LOSS', loss)
 
         return loss
 
@@ -252,7 +277,100 @@ class DiffusionTraj(Module):
             else:
                 traj_list.append(traj[0])
         return torch.stack(traj_list)
+    
+    """
+    Functions used to compute the vlb loss for learning variances
+    """
+    def loss_vlb(self, mean, sigma, x_start, x_t, t):
+        # Learn variances using the variational bound but without letting it affect the mean
+        loss = self._vb_terms_bpd(mean, sigma, x_start, x_t, t)
+        return loss
 
+    def _vb_terms_bpd(self, mean, sigma, x_start, x_t, t):
+        true_mean, true_log_variance_clipped = self.q_posterior_mean_variance(x_start=x_start, x_t=x_t, t=t)
+        log_variance = torch.log(sigma)
+        kl = self.normal_kl(true_mean, true_log_variance_clipped, mean, log_variance)
+        kl = self.mean_flat(kl) / np.log(2.0)
+
+        decoder_nll = -self.discretized_gaussian_log_likelihood(
+            x_start, means=mean, log_scales=0.5 * log_variance
+        )
+        assert decoder_nll.shape == x_start.shape
+        decoder_nll = self.mean_flat(decoder_nll) / np.log(2.0)
+        # At the first timestep return the decoder NLL,
+        # otherwise return KL(q(x_{t-1}|x_t,x_0) || p(x_{t-1}|x_t))
+        output = torch.where((torch.tensor(t).to(x_start.device) == 0), decoder_nll, kl)
+        # output = torch.mean(decoder_nll)
+        return output
+
+    def q_posterior_mean_variance(self, x_start, x_t, t):
+        """
+        Compute the mean and variance of the diffusion posterior:
+            q(x_{t-1} | x_t, x_0)
+        """
+        assert x_start.shape == x_t.shape
+        posterior_mean = (
+            self.var_sched.posterior_mean_coef1[t].view(-1,1,1).to(x_start.device) * x_start
+            + self.var_sched.posterior_mean_coef2[t].view(-1,1,1).to(x_start.device) * x_t
+        )
+        posterior_log_variance_clipped = self.var_sched.posterior_log_variance_clipped[t]
+        assert (
+            posterior_mean.shape[0]
+            == posterior_log_variance_clipped.shape[0]
+            == x_start.shape[0]
+        )
+        return posterior_mean, posterior_log_variance_clipped
+    
+    def normal_kl(self, mean1, logvar1, mean2, logvar2):
+        logvar1 = logvar1.view(-1,1,1).to(mean1.device)
+        return 0.5 * (
+            -1.0
+            + logvar2 - logvar1
+            + torch.exp(logvar1 - logvar2)
+            + ((mean1 - mean2) ** 2) * torch.exp(-logvar2)
+        )
+
+    def mean_flat(self, tensor):
+        """
+        Take the mean over all non-batch dimensions.
+        """
+        return tensor.mean(dim=list(range(1, len(tensor.shape))))
+    
+    def discretized_gaussian_log_likelihood(self, x, *, means, log_scales):
+        """
+        Compute the log-likelihood of a Gaussian distribution discretizing to a
+        given image.
+
+        :param x: the target images. It is assumed that this was uint8 values,
+                rescaled to the range [-1, 1].
+        :param means: the Gaussian mean Tensor.
+        :param log_scales: the Gaussian log stddev Tensor.
+        :return: a tensor like x of log probabilities (in nats).
+        """
+        assert x.shape == means.shape == log_scales.shape
+        centered_x = x - means
+        inv_stdv = torch.exp(-log_scales)
+        plus_in = inv_stdv * (centered_x + 1.0 / 255.0)
+        cdf_plus = self.approx_standard_normal_cdf(plus_in)
+        min_in = inv_stdv * (centered_x - 1.0 / 255.0)
+        cdf_min = self.approx_standard_normal_cdf(min_in)
+        log_cdf_plus = torch.log(cdf_plus.clamp(min=1e-12))
+        log_one_minus_cdf_min = torch.log((1.0 - cdf_min).clamp(min=1e-12))
+        cdf_delta = cdf_plus - cdf_min
+        log_probs = torch.where(
+            x < -0.999,
+            log_cdf_plus,
+            torch.where(x > 0.999, log_one_minus_cdf_min, torch.log(cdf_delta.clamp(min=1e-12))),
+        )
+        assert log_probs.shape == x.shape
+        return log_probs
+    
+    def approx_standard_normal_cdf(self, x):
+        """
+        A fast approximation of the cumulative distribution function of the
+        standard normal.
+        """
+        return 0.5 * (1.0 + torch.tanh(np.sqrt(2.0 / np.pi) * (x + 0.044715 * torch.pow(x, 3))))
 
 """
 NOISE SCHEDULE FUNCTIONS
