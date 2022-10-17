@@ -47,7 +47,7 @@ class AutoEncoder(Module):
             ),
             learn_sigmas=self.config.learn_sigmas,
             lambda_vlb=self.config.lambda_vlb,
-            device='cpu' if self.config.device=='cpu' and self.config.eval_device=='cpu' else 'cuda'
+            device=self.config.device
         )
 
     def encode(self, batch,node_type):

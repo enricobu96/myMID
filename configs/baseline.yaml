@@ -21,17 +21,17 @@ eval_at: 1
 eval_mode: False
 
 # Visualization
-use_wandb: False
+use_wandb: True
 
 # SDD longterm prediction
 sdd_longterm: False
 
 # Cosine schedule. Choose from: two_fifth_pi_cos_squared, piecewise_cos_inv, clipped_two_fifth, sigmoid, sigmoid_2
-variance_sched: cosine
+variance_sched: linear
 cosine_sched: sigmoid
 
 # Learn variances
-learn_sigmas: True
+learn_sigmas: False
 lambda_vlb: 0.0001
 
 ############### Trajectron++ Config #################
@@ -59,5 +59,5 @@ scene_freq_mult_viz: False
 no_edge_encoding: False
 
 # Data Parameters
-device: cuda
-eval_device: cuda
+device: cpu
+eval_device: cpu

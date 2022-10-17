@@ -199,28 +199,17 @@ class DiffusionTraj(Module):
             t = self.var_sched.uniform_sample_t(batch_size)
 
         alpha_bar = self.var_sched.alpha_bars[t]
-        if self.device == 'cpu':
-            beta = self.var_sched.betas[t].to('cpu')
-            c0 = torch.sqrt(alpha_bar).view(-1, 1, 1).to('cpu')    # (B, 1, 1)
-            c1 = torch.sqrt(1 - alpha_bar).view(-1, 1, 1).to('cpu')   # (B, 1, 1)
-            e_rand = torch.randn_like(x_0).to('cpu')  # (B, N, d)
-        else:
-            beta = self.var_sched.betas[t].cuda()
-            c0 = torch.sqrt(alpha_bar).view(-1, 1, 1).cuda()    # (B, 1, 1)
-            c1 = torch.sqrt(1 - alpha_bar).view(-1, 1, 1).cuda()   # (B, 1, 1)
-            e_rand = torch.randn_like(x_0).cuda()  # (B, N, d)
+        beta = self.var_sched.betas[t].to(x_0.device)
+        c0 = torch.sqrt(alpha_bar).view(-1, 1, 1).to(x_0.device)    # (B, 1, 1)
+        c1 = torch.sqrt(1 - alpha_bar).view(-1, 1, 1).to(x_0.device)   # (B, 1, 1)
+        e_rand = torch.randn_like(x_0).to(x_0.device)  # (B, N, d)
 
         out = self.net(c0 * x_0 + c1 * e_rand, beta=beta, context=context)
 
         if self.learn_sigmas:
             e_theta, variance_v = out.split(2, dim=2)
             sigmas = self.var_sched.get_sigmas_learning(variance_v, t)
-        else:
-            e_theta = out
-
-        loss_simple = F.mse_loss(e_theta.view(-1, point_dim), e_rand.view(-1, point_dim), reduction='mean')
-
-        if self.learn_sigmas:
+            
             # Compute LOSS_VLB
             loss_vlb = self.loss_vlb(
                 mean=e_theta,
@@ -229,11 +218,12 @@ class DiffusionTraj(Module):
                 x_t = c0 * x_0 + c1 * e_rand,
                 t=t
                 )
-            print('LOSS', loss_vlb)
+            # print('LOSS', loss_vlb)
+            loss_simple = F.mse_loss(e_theta.view(-1, point_dim), e_rand.view(-1, point_dim), reduction='mean')
             loss = loss_simple + self.lambda_vlb*loss_vlb
         else:
-            loss = loss_simple
-            print('LOSS', loss)
+            e_theta = out
+            loss = F.mse_loss(e_theta.view(-1, point_dim), e_rand.view(-1, point_dim), reduction='mean')
 
         return loss
 
@@ -300,7 +290,8 @@ class DiffusionTraj(Module):
         # At the first timestep return the decoder NLL,
         # otherwise return KL(q(x_{t-1}|x_t,x_0) || p(x_{t-1}|x_t))
         output = torch.where((torch.tensor(t).to(x_start.device) == 0), decoder_nll, kl)
-        output = torch.mean(torch.nan_to_num(output, 1))
+        # output = torch.mean(torch.nan_to_num(output, 1))
+        output = torch.mean(output)
         return output
 
     def q_posterior_mean_variance(self, x_start, x_t, t):
