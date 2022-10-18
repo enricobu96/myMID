@@ -184,13 +184,12 @@ class DiffusionTraj(Module):
     DiffusionTraj class, used as diffusion model for trajectories (crucial part of the project).
     This contains in turn the net (in this case TransformerConcatLinear) and the variance schedule.
     """
-    def __init__(self, net, var_sched:VarianceSchedule, learn_sigmas=False, lambda_vlb=1e-4, device='cpu'):
+    def __init__(self, net, var_sched:VarianceSchedule, learn_sigmas=False, lambda_vlb=1e-4):
         super().__init__()
         self.net = net
         self.var_sched = var_sched
         self.learn_sigmas = learn_sigmas
         self.lambda_vlb = lambda_vlb
-        self.device = device
 
     def get_loss(self, x_0, context, t=None):
         # Compute LOSS_SIMPLE (old code)
