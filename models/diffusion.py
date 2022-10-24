@@ -184,13 +184,12 @@ class DiffusionTraj(Module):
     DiffusionTraj class, used as diffusion model for trajectories (crucial part of the project).
     This contains in turn the net (in this case TransformerConcatLinear) and the variance schedule.
     """
-    def __init__(self, net, var_sched:VarianceSchedule, learn_sigmas=False, lambda_vlb=1e-4, device='cpu'):
+    def __init__(self, net, var_sched:VarianceSchedule, learn_sigmas=False, lambda_vlb=1e-4):
         super().__init__()
         self.net = net
         self.var_sched = var_sched
         self.learn_sigmas = learn_sigmas
         self.lambda_vlb = lambda_vlb
-        self.device = device
 
     def get_loss(self, x_0, context, t=None):
         # Compute LOSS_SIMPLE (old code)
@@ -210,16 +209,18 @@ class DiffusionTraj(Module):
             e_theta, variance_v = out.split(2, dim=2)
             sigmas = self.var_sched.get_sigmas_learning(variance_v, t)
             
-            # Compute LOSS_VLB
-            loss_vlb = self.loss_vlb(
-                mean=e_theta,
-                sigma=sigmas,
-                x_start = x_0,
-                x_t = c0 * x_0 + c1 * e_rand,
-                t=t
-                )
             # print('LOSS', loss_vlb)
             loss_simple = F.mse_loss(e_theta.view(-1, point_dim), e_rand.view(-1, point_dim), reduction='mean')
+            with torch.no_grad():
+                # Compute LOSS_VLB
+                loss_vlb = self.loss_vlb(
+                    mean=e_theta,
+                    sigma=sigmas,
+                    x_start = x_0,
+                    x_t = c0 * x_0 + c1 * e_rand,
+                    t=t
+                    )
+
             loss = loss_simple + self.lambda_vlb*loss_vlb
         else:
             e_theta = out
@@ -251,8 +252,7 @@ class DiffusionTraj(Module):
 
                 if self.learn_sigmas:
                     e_theta, variance_v = out.split(2, dim=2)
-                    sigmas = self.var_sched.get_sigmas_learning(variance_v, t)
-
+                    sigma = self.var_sched.get_sigmas_learning(variance_v, t)
                 else:
                     e_theta = out
 
@@ -290,8 +290,8 @@ class DiffusionTraj(Module):
         # At the first timestep return the decoder NLL,
         # otherwise return KL(q(x_{t-1}|x_t,x_0) || p(x_{t-1}|x_t))
         output = torch.where((torch.tensor(t).to(x_start.device) == 0), decoder_nll, kl)
-        # output = torch.mean(torch.nan_to_num(output, 1))
-        output = torch.mean(output)
+        output = torch.mean(torch.nan_to_num(output, 1))
+        # output = torch.mean(output)
         return output
 
     def q_posterior_mean_variance(self, x_start, x_t, t):
