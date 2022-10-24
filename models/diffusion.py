@@ -104,11 +104,13 @@ class VarianceSchedule(Module):
         )
         self.posterior_variance = (
             betas * (1.0 - self.alphas_cumprod_prev) / (1.0 - self.alphas_cumprod)
-        )
-        self.posterior_log_variance_clipped = torch.tensor(np.log( # TODO: fix possibly -inf values
-            np.append(self.posterior_variance[1], self.posterior_variance[1:])
+        ).nan_to_num(nan=0.0)
+        self.posterior_log_variance_clipped = torch.tensor(np.log(
+            self.posterior_variance
         ))
-
+        self.posterior_log_variance_clipped[
+            self.posterior_log_variance_clipped==float('-inf')
+            ] = self.posterior_log_variance_clipped[2]
 
     def uniform_sample_t(self, batch_size):
         ts = np.random.choice(np.arange(1, self.num_steps+1), batch_size)
@@ -290,7 +292,7 @@ class DiffusionTraj(Module):
         # At the first timestep return the decoder NLL,
         # otherwise return KL(q(x_{t-1}|x_t,x_0) || p(x_{t-1}|x_t))
         output = torch.where((torch.tensor(t).to(x_start.device) == 0), decoder_nll, kl)
-        output = torch.mean(torch.nan_to_num(output, 1))
+        output = torch.mean(torch.nan_to_num(output, 0)) #TODO try to remove it
         # output = torch.mean(output)
         return output
 
