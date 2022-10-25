@@ -280,7 +280,7 @@ class DiffusionTraj(Module):
 
     def _vb_terms_bpd(self, mean, sigma, x_start, x_t, t):
         true_mean, true_log_variance_clipped = self.q_posterior_mean_variance(x_start=x_start, x_t=x_t, t=t)
-        log_variance = torch.log(sigma)
+        log_variance = sigma
         kl = self.normal_kl(true_mean, true_log_variance_clipped, mean, log_variance)
         kl = self.mean_flat(kl) / np.log(2.0)
 
@@ -292,8 +292,7 @@ class DiffusionTraj(Module):
         # At the first timestep return the decoder NLL,
         # otherwise return KL(q(x_{t-1}|x_t,x_0) || p(x_{t-1}|x_t))
         output = torch.where((torch.tensor(t).to(x_start.device) == 0), decoder_nll, kl)
-        output = torch.mean(torch.nan_to_num(output, 0)) #TODO try to remove it
-        # output = torch.mean(output)
+        output = torch.mean(output)
         return output
 
     def q_posterior_mean_variance(self, x_start, x_t, t):
