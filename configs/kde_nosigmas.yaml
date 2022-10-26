@@ -1,6 +1,6 @@
 ############ MID Config #############
 # Optimizer
-lr: 0.001
+lr: 0.001 #0.0001
 
 # Dataset
 data_dir: processed_data_noise # The path with the directory with XXX.pkl
@@ -32,7 +32,7 @@ cosine_sched: sigmoid
 
 # Learn variances
 learn_sigmas: False
-lambda_vlb: 0.001 #0.0001
+lambda_vlb: 0.001
 
 ############### Trajectron++ Config #################
 # Misc

@@ -11,8 +11,7 @@ class VarianceSchedule(Module):
     """
     Class representing the variance schedule. In the original formulation, this class works both for the
     noise schedule and the variance schedule: in fact, the authors followed the DDPM paper, in which the
-    sigmas (variances) are not learnt. In the new formulation (TODO), get_sigmas will need to return
-    the learnt sigmas (or something like that).
+    sigmas (variances) are not learnt. In the new formulation, get_sigmas returns the learnt sigmas.
 
     Args:
         num_steps: int : number of steps in the variance schedule
@@ -35,7 +34,7 @@ class VarianceSchedule(Module):
         2. Pads the betas in order to match dimensions
         3. Computes alphas, alpha_logs and sigmas
     """
-    def __init__(self, num_steps, mode='linear',beta_1=1e-4, beta_T=5e-2,cosine_s=8e-3,cosine_sched='sigmoid_2'): #original cosine_s=8e-3
+    def __init__(self, num_steps, mode='linear',beta_1=1e-4, beta_T=5e-2, cosine_s=8e-3, cosine_sched='sigmoid'):
         super().__init__()
         assert mode in ('linear', 'cosine')
         self.num_steps = num_steps
@@ -66,6 +65,10 @@ class VarianceSchedule(Module):
                 print('Warning: incorrect cosine schedule, rolling back on sigmoid')
                 betas = sigmoid(cosine_s, num_steps)
 
+        """
+        Compute betas and alphas for the noise schedule.
+        Simgas are the variance schedule for the non-learned version.
+        """
         betas = torch.cat([torch.zeros([1]), betas], dim=0)     # Padding
 
         alphas = 1 - betas
@@ -80,37 +83,27 @@ class VarianceSchedule(Module):
             sigmas_inflex[i] = ((1 - alpha_bars[i-1]) / (1 - alpha_bars[i])) * betas[i]
         sigmas_inflex = torch.sqrt(sigmas_inflex)
 
-        # Save stuff for the learned version
-        self.betas_var = betas
-        self.alpha_bars_var = alpha_bars
-        self.beta_bars_var = sigmas_inflex
-
         self.register_buffer('betas', betas)
         self.register_buffer('alphas', alphas)
         self.register_buffer('alpha_bars', alpha_bars)
         self.register_buffer('sigmas_flex', sigmas_flex)
         self.register_buffer('sigmas_inflex', sigmas_inflex)
 
-        # Compute stuff additional stuff for learned version
-        self.alphas_cumprod = torch.cumprod(alphas, axis=0)
-        self.alphas_cumprod_prev = torch.cat([torch.ones(1), self.alphas_cumprod[:-1]])
-        self.posterior_mean_coef1 = (
-            betas * torch.sqrt(self.alphas_cumprod_prev) / (1.0 - self.alphas_cumprod)
-        )
-        self.posterior_mean_coef2 = (
-            (1.0 - self.alphas_cumprod_prev)
-            * torch.sqrt(alphas)
-            / (1.0 - self.alphas_cumprod)
-        )
-        self.posterior_variance = (
-            betas * (1.0 - self.alphas_cumprod_prev) / (1.0 - self.alphas_cumprod)
-        ).nan_to_num(nan=0.0)
-        self.posterior_log_variance_clipped = torch.tensor(np.log(
-            self.posterior_variance
-        ))
-        self.posterior_log_variance_clipped[
-            self.posterior_log_variance_clipped==float('-inf')
-            ] = self.posterior_log_variance_clipped[2]
+        """
+        Compute additional probability components for the learned version.
+        Save variables to then compute sigmas for the learned variance schedule.
+        """
+        alphas_cumprod = torch.cumprod(alphas, axis=0)
+        alphas_cumprod_prev = torch.cat([torch.ones(1), alphas_cumprod[:-1]])
+        posterior_mean_coef1 = (betas * torch.sqrt(alphas_cumprod_prev) / (1.0 - alphas_cumprod))
+        posterior_mean_coef2 = ((1.0 - alphas_cumprod_prev)*torch.sqrt(alphas)/ (1.0 - alphas_cumprod))
+        posterior_variance = (betas * (1.0 - alphas_cumprod_prev) / (1.0 - alphas_cumprod)).nan_to_num(0.0)
+        posterior_variance[posterior_variance==0] = posterior_variance[np.nonzero(posterior_variance)][0]
+        posterior_log_variance_clipped = torch.log(posterior_variance)
+        
+        self.register_buffer('posterior_mean_coef1', posterior_mean_coef1)
+        self.register_buffer('posterior_mean_coef2', posterior_mean_coef2)
+        self.register_buffer('posterior_log_variance_clipped', posterior_log_variance_clipped)
 
     def uniform_sample_t(self, batch_size):
         ts = np.random.choice(np.arange(1, self.num_steps+1), batch_size)
@@ -129,9 +122,9 @@ class VarianceSchedule(Module):
     The expression returns the variances for each step of the DiffusionTraj model.
     """
     def get_sigmas_learning(self, v, t):
-        c0 = torch.log(self.betas_var[t]).view(-1, 1, 1).to(v.device)
-        c1 = torch.log(self.beta_bars_var[t]).view(-1, 1, 1).to(v.device)
-        sigmas = torch.exp(v*c0 + (1-v)*c1)
+        c0 = torch.log(self.betas[t]).view(-1, 1, 1).to(v.device)
+        c1 = torch.log(self.sigmas_inflex[t]).view(-1, 1, 1).to(v.device)
+        sigmas = torch.exp(v*c0 + (torch.ones_like(v)-v)*c1)
         return sigmas
 
 class TransformerConcatLinear(Module):
@@ -194,7 +187,11 @@ class DiffusionTraj(Module):
         self.lambda_vlb = lambda_vlb
 
     def get_loss(self, x_0, context, t=None):
-        # Compute LOSS_SIMPLE (old code)
+        
+        """
+        Push the input in the model and get model output. The latter is then treated in a different
+        way depending on the type of model (learned sigmas or not).
+        """
         batch_size, _, point_dim = x_0.size()
         if t == None:
             t = self.var_sched.uniform_sample_t(batch_size)
@@ -208,13 +205,19 @@ class DiffusionTraj(Module):
         out = self.net(c0 * x_0 + c1 * e_rand, beta=beta, context=context)
 
         if self.learn_sigmas:
+            """
+            If we are learning sigmas:
+            - Split the output in two parts: the first part is the mean, the second part is the variance
+            - Get the sigmas from the variance
+            - Compute simple loss, i.e. wrt the mean (L_simple)
+            - Stop the gradients and compute the variance lower bound loss (L_vlb)
+            - Loss is L_hybrid = L_simple + lambda_vlb * L_vlb
+            """
             e_theta, variance_v = out.split(2, dim=2)
-            sigmas = self.var_sched.get_sigmas_learning(variance_v, t)
-            
-            # print('LOSS', loss_vlb)
+            sigmas = self.var_sched.get_sigmas_learning(variance_v.detach(), t)
+
             loss_simple = F.mse_loss(e_theta.view(-1, point_dim), e_rand.view(-1, point_dim), reduction='mean')
             with torch.no_grad():
-                # Compute LOSS_VLB
                 loss_vlb = self.loss_vlb(
                     mean=e_theta,
                     sigma=sigmas,
@@ -222,11 +225,12 @@ class DiffusionTraj(Module):
                     x_t = c0 * x_0 + c1 * e_rand,
                     t=t
                     )
-
             loss = loss_simple + self.lambda_vlb*loss_vlb
         else:
-            e_theta = out
-            loss = F.mse_loss(e_theta.view(-1, point_dim), e_rand.view(-1, point_dim), reduction='mean')
+            """
+            If we are not learning sigmas, just compute L_simple
+            """
+            loss = F.mse_loss(out.view(-1, point_dim), e_rand.view(-1, point_dim), reduction='mean')
 
         return loss
 
@@ -274,11 +278,17 @@ class DiffusionTraj(Module):
     Functions used to compute the vlb loss for learning variances
     """
     def loss_vlb(self, mean, sigma, x_start, x_t, t):
-        # Learn variances using the variational bound but without letting it affect the mean
+        """
+        Learn variances using the variational bound but without letting it affect the mean
+        """
         loss = self._vb_terms_bpd(mean, sigma, x_start, x_t, t)
         return loss
 
     def _vb_terms_bpd(self, mean, sigma, x_start, x_t, t):
+        """
+        Compute terms for the variational lower bound -> return the final output, i.e. the loss (L_vlb).
+        At the first timestep return the decoder NLL, otherwise return KL(q(x_{t-1}|x_t,x_0) || p(x_{t-1}|x_t))
+        """
         true_mean, true_log_variance_clipped = self.q_posterior_mean_variance(x_start=x_start, x_t=x_t, t=t)
         log_variance = sigma
         kl = self.normal_kl(true_mean, true_log_variance_clipped, mean, log_variance)
@@ -287,32 +297,31 @@ class DiffusionTraj(Module):
         decoder_nll = -self.discretized_gaussian_log_likelihood(
             x_start, means=mean, log_scales=0.5 * log_variance
         )
-        assert decoder_nll.shape == x_start.shape
         decoder_nll = self.mean_flat(decoder_nll) / np.log(2.0)
-        # At the first timestep return the decoder NLL,
-        # otherwise return KL(q(x_{t-1}|x_t,x_0) || p(x_{t-1}|x_t))
+
         output = torch.where((torch.tensor(t).to(x_start.device) == 0), decoder_nll, kl)
         output = torch.mean(output)
+
         return output
 
     def q_posterior_mean_variance(self, x_start, x_t, t):
         """
-        Compute the mean and variance of the diffusion posterior:
-            q(x_{t-1} | x_t, x_0)
+        Compute the mean and variance of the diffusion posterior: q(x_{t-1}|x_t,x_0)
         """
-        assert x_start.shape == x_t.shape
         posterior_mean = (
             self.var_sched.posterior_mean_coef1[t].view(-1,1,1).to(x_start.device) * x_start
             + self.var_sched.posterior_mean_coef2[t].view(-1,1,1).to(x_start.device) * x_t
         )
         posterior_log_variance_clipped = self.var_sched.posterior_log_variance_clipped[t]
-        assert (
-            posterior_mean.shape[0]
-            == posterior_log_variance_clipped.shape[0]
-            == x_start.shape[0]
-        )
         return posterior_mean, posterior_log_variance_clipped
     
+    """
+    Utility functions.
+    - normal_kl(mean1, logvar1, mean2, logvar2) : KL divergence between two normal distributions
+    - mean_flat(tensor): mean over all non-batch dimensions
+    - discretized_gaussian_log_likelihood (x, means, log_scales): log likelihood of a gaussian distribution to the input data
+    - approx_standard_normal_cdf(x): (fast) approximation of the standard normal cdf
+    """
     def normal_kl(self, mean1, logvar1, mean2, logvar2):
         logvar1 = logvar1.view(-1,1,1).to(mean1.device)
         return 0.5 * (
@@ -323,26 +332,13 @@ class DiffusionTraj(Module):
         )
 
     def mean_flat(self, tensor):
-        """
-        Take the mean over all non-batch dimensions.
-        """
         return tensor.mean(dim=list(range(1, len(tensor.shape))))
     
     def discretized_gaussian_log_likelihood(self, x, *, means, log_scales):
-        """
-        Compute the log-likelihood of a Gaussian distribution discretizing to a
-        given image.
-
-        :param x: the target images. It is assumed that this was uint8 values,
-                rescaled to the range [-1, 1].
-        :param means: the Gaussian mean Tensor.
-        :param log_scales: the Gaussian log stddev Tensor.
-        :return: a tensor like x of log probabilities (in nats).
-        """
         assert x.shape == means.shape == log_scales.shape
         centered_x = x - means
         inv_stdv = torch.exp(-log_scales)
-        plus_in = inv_stdv * (centered_x + 1.0 / 255.0)
+        plus_in = inv_stdv * (centered_x + 1 / 255.0)
         cdf_plus = self.approx_standard_normal_cdf(plus_in)
         min_in = inv_stdv * (centered_x - 1.0 / 255.0)
         cdf_min = self.approx_standard_normal_cdf(min_in)
