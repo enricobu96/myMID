@@ -1,0 +1,63 @@
+############ MID Config #############
+# Optimizer
+lr: 0.001
+
+# Dataset
+data_dir: processed_data_noise # The path with the directory with XXX.pkl
+
+# Training Parameters
+diffnet: TransformerConcatLinear # Type of diffnet
+encoder_dim: 256 # Encoder dimension
+tf_layer: 3 # Number of layers of the transformer
+epochs: 60
+batch_size: 256
+eval_batch_size: 256
+k_eval: 25
+seed: 123
+eval_every: 15
+
+# Testing
+eval_at: 1
+eval_mode: False
+
+# Visualization
+use_wandb: False
+
+# SDD longterm prediction
+sdd_longterm: False
+
+# Cosine schedule. Choose from: two_fifth_pi_cos_squared, piecewise_cos_inv, clipped_two_fifth, sigmoid, sigmoid_2
+variance_sched: cosine
+cosine_sched: sigmoid
+
+# Learn variances
+learn_sigmas: True
+lambda_vlb: 0.001 #0.0001
+
+############### Trajectron++ Config #################
+# Misc
+conf: None
+debug: False
+preprocess_workers: 0
+
+# Model parameters
+offline_scene_graph: yes
+dynamic_edges: yes
+edge_state_combine_method: sum
+edge_influence_combine_method: attention
+edge_addition_filter: [0.25, 0.5, 0.75, 1.0]
+edge_removal_filter: [1.0, 0.0]
+override_attention_radius: []
+incl_robot_node: False
+map_encoding: False
+augment: True
+node_freq_mult_train: False
+node_freq_mult_eval: False
+scene_freq_mult_train: False
+scene_freq_mult_eval: False
+scene_freq_mult_viz: False
+no_edge_encoding: False
+
+# Data Parameters
+device: cuda
+eval_device: cuda
