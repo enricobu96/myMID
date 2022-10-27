@@ -112,6 +112,7 @@ class MID():
                 node_type = "PEDESTRIAN"
                 eval_ade_batch_errors = []
                 eval_fde_batch_errors = []
+                eval_kde_batch_errors = []
 
                 ph = self.hyperparams['prediction_horizon']
                 min_hl = self.hyperparams['minimum_history_length'] if self.config.sdd_longterm and self.config['dataset'] == 'sdd' else 7
@@ -150,13 +151,14 @@ class MID():
                                                                                max_hl=max_hl,
                                                                                ph=ph,
                                                                                node_type_enum=self.eval_env.NodeType,
-                                                                               kde=False,
+                                                                               kde=True,
                                                                                map=None,
                                                                                best_of=True,
                                                                                prune_ph_to_future=True)
 
                         eval_ade_batch_errors = np.hstack((eval_ade_batch_errors, batch_error_dict[node_type]['ade']))
                         eval_fde_batch_errors = np.hstack((eval_fde_batch_errors, batch_error_dict[node_type]['fde']))
+                        eval_kde_batch_errors = np.hstack((eval_kde_batch_errors, batch_error_dict[node_type]['kde']))
 
                     """
                     WANDB VISUALIZATION
@@ -177,6 +179,7 @@ class MID():
 
                 ade = np.mean(eval_ade_batch_errors)
                 fde = np.mean(eval_fde_batch_errors)
+                kde = np.mean(eval_kde_batch_errors)
 
                 if self.config.dataset == "eth":
                     ade = ade/0.6
@@ -193,7 +196,7 @@ class MID():
                     wandb.log(train_losses, step=epoch)
                     wandb.log(train_metrics, step=epoch)
                 
-                print(f"Epoch {epoch} Best Of 20: ADE: {ade} FDE: {fde}")
+                print(f"Epoch {epoch} Best Of 20: ADE: {ade} FDE: {fde} KDE: {kde}")
                 self.log.info(f"Best of 20: Epoch {epoch} ADE: {ade} FDE: {fde}")
 
                 # Saving model
@@ -221,6 +224,8 @@ class MID():
             node_type = "PEDESTRIAN"
             eval_ade_batch_errors = []
             eval_fde_batch_errors = []
+            eval_kde_batch_errors = []
+
             ph = self.hyperparams['prediction_horizon']
             max_hl = self.hyperparams['maximum_history_length']
             min_hl = self.hyperparams['minimum_history_length'] if self.config.sdd_longterm and self.config['dataset'] == 'sdd' else 7
@@ -255,13 +260,14 @@ class MID():
                                                                            max_hl=max_hl,
                                                                            ph=ph,
                                                                            node_type_enum=self.eval_env.NodeType,
-                                                                           kde=False,
+                                                                           kde=True,
                                                                            map=None,
                                                                            best_of=True,
                                                                            prune_ph_to_future=True)
 
                     eval_ade_batch_errors = np.hstack((eval_ade_batch_errors, batch_error_dict[node_type]['ade']))
                     eval_fde_batch_errors = np.hstack((eval_fde_batch_errors, batch_error_dict[node_type]['fde']))
+                    eval_kde_batch_errors = np.hstack((eval_kde_batch_errors, batch_error_dict[node_type]['kde']))
 
                 """
                 WANDB VISUALIZATION
@@ -282,6 +288,7 @@ class MID():
 
             ade = np.mean(eval_ade_batch_errors)
             fde = np.mean(eval_fde_batch_errors)
+            kde = np.mean(eval_kde_batch_errors)
 
             if self.config.dataset == "eth":
                 ade = ade/0.6
@@ -296,7 +303,7 @@ class MID():
             if self.config.use_wandb:
                 wandb.log(train_metrics, step=epoch)
 
-            print(f"Epoch {epoch} Best Of 20: ADE: {ade} FDE: {fde}")
+            print(f"Epoch {epoch} Best Of 20: ADE: {ade} FDE: {fde} KDE: {kde}")
         #self.log.info(f"Best of 20: Epoch {epoch} ADE: {ade} FDE: {fde}")
 
 
