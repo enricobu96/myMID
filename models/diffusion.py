@@ -74,7 +74,7 @@ class VarianceSchedule(Module):
         alphas = 1 - betas
         log_alphas = torch.log(alphas)
         for i in range(1, log_alphas.size(0)):  # 1 to T
-            log_alphas[i] += log_alphas[i - 1]
+            log_alphas[i] += log_alphas[i-1]
         alpha_bars = log_alphas.exp()
 
         sigmas_flex = torch.sqrt(betas)
@@ -95,6 +95,7 @@ class VarianceSchedule(Module):
         """
         alphas_cumprod = torch.cumprod(alphas, axis=0)
         alphas_cumprod_prev = torch.cat([torch.ones(1), alphas_cumprod[:-1]])
+
         posterior_mean_coef1 = (betas * torch.sqrt(alphas_cumprod_prev) / (1.0 - alphas_cumprod))
         posterior_mean_coef2 = ((1.0 - alphas_cumprod_prev)*torch.sqrt(alphas)/ (1.0 - alphas_cumprod))
         posterior_variance = (betas * (1.0 - alphas_cumprod_prev) / (1.0 - alphas_cumprod)).nan_to_num(0.0)
@@ -214,7 +215,7 @@ class DiffusionTraj(Module):
             - Loss is L_hybrid = L_simple + lambda_vlb * L_vlb
             """
             e_theta, variance_v = out.split(2, dim=2)
-            sigmas = self.var_sched.get_sigmas_learning(variance_v.detach(), t)
+            sigmas = variance_v #self.var_sched.get_sigmas_learning(variance_v.detach(), t)
 
             loss_simple = F.mse_loss(e_theta.view(-1, point_dim), e_rand.view(-1, point_dim), reduction='mean')
             with torch.no_grad():

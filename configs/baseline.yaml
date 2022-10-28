@@ -1,6 +1,6 @@
 ############ MID Config #############
 # Optimizer
-lr: 0.0001
+lr: 0.001
 
 # Dataset
 data_dir: processed_data_noise # The path with the directory with XXX.pkl
@@ -9,12 +9,12 @@ data_dir: processed_data_noise # The path with the directory with XXX.pkl
 diffnet: TransformerConcatLinear # Type of diffnet
 encoder_dim: 256 # Encoder dimension
 tf_layer: 3 # Number of layers of the transformer
-epochs: 2
+epochs: 5
 batch_size: 256
 eval_batch_size: 256
 k_eval: 25
 seed: 123
-eval_every: 2
+eval_every: 5
 
 # Testing
 eval_at: 120
@@ -27,7 +27,7 @@ use_wandb: False
 sdd_longterm: False
 
 # Cosine schedule. Choose from: two_fifth_pi_cos_squared, piecewise_cos_inv, clipped_two_fifth, sigmoid, sigmoid_2
-variance_sched: linear
+variance_sched: cosine
 cosine_sched: sigmoid
 
 # Learn variances
