@@ -227,17 +227,27 @@ class DiffusionTraj(Module):
             sigmas = variance_v if not self.learned_range else self.var_sched.get_sigmas_learning(variance_v.detach(), t)
 
             loss_simple = F.mse_loss(e_theta.view(-1, point_dim), e_rand.view(-1, point_dim), reduction='mean')
-            with torch.no_grad():
                 loss_vlb = self.loss_vlb(
-                    mean=e_theta,
+                mean=e_theta.detach(),
                     sigma=sigmas,
-                    x_start = x_0,
-                    x_t = c0 * x_0 + c1 * e_rand,
+                x_start=x_0,
+                x_t=c0*x_0+c1*e_rand,
                     t=t,
                     pmc1=self.var_sched.posterior_mean_coef1,
                     pmc2=self.var_sched.posterior_mean_coef2,
                     plvc=self.var_sched.posterior_log_variance_clipped
                     )
+            # with torch.no_grad():
+            #     loss_vlb = self.loss_vlb(
+            #         mean=e_theta,
+            #         sigma=sigmas,
+            #         x_start = x_0,
+            #         x_t = c0 * x_0 + c1 * e_rand,
+            #         t=t,
+            #         pmc1=self.var_sched.posterior_mean_coef1,
+            #         pmc2=self.var_sched.posterior_mean_coef2,
+            #         plvc=self.var_sched.posterior_log_variance_clipped
+            #         )
             loss = loss_simple + self.lambda_vlb*loss_vlb
         else:
             """
