@@ -9,19 +9,19 @@ data_dir: processed_data_noise # The path with the directory with XXX.pkl
 diffnet: TransformerConcatLinear # Type of diffnet
 encoder_dim: 256 # Encoder dimension
 tf_layer: 3 # Number of layers of the transformer
-epochs: 5
+epochs: 150
 batch_size: 256
 eval_batch_size: 256
 k_eval: 25
 seed: 123
-eval_every: 5
+eval_every: 30
 
 # Testing
-eval_at: 120
+eval_at: 3
 eval_mode: False
 
 # Visualization
-use_wandb: False
+use_wandb: True
 
 # SDD longterm prediction
 sdd_longterm: False
@@ -32,7 +32,8 @@ cosine_sched: sigmoid
 
 # Learn variances
 learn_sigmas: True
-lambda_vlb: 0.0001
+learned_range: True
+lambda_vlb: 0.001
 
 ############### Trajectron++ Config #################
 # Misc

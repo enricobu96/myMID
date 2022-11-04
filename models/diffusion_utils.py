@@ -77,7 +77,7 @@ def discretized_gaussian_log_likelihood(x, *, means, log_scales):
     assert x.shape == means.shape == log_scales.shape
     centered_x = x - means
     inv_stdv = torch.exp(-log_scales)
-    plus_in = inv_stdv * (centered_x + 1 / 255.0)
+    plus_in = inv_stdv * (centered_x + 1.0 / 255.0)
     cdf_plus = approx_standard_normal_cdf(plus_in)
     min_in = inv_stdv * (centered_x - 1.0 / 255.0)
     cdf_min = approx_standard_normal_cdf(min_in)

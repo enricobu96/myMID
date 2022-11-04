@@ -121,8 +121,11 @@ class VarianceSchedule(Module):
     """
     Gets sigmas for the learned version: sigmas_inflex becomes the beta bars and is used to compute expression 15 in IDDPM.
     The expression returns the variances for each step of the DiffusionTraj model.
+    Note: the commented code is the original code from the IDDPM paper, but it's different from the one in the IDDPM code.
+    The results with the paper code looks to be slightly worse than the ones with the new code; therefore, the old code is just
+    left here for reference.
     """
-    def get_sigmas_learning(self, v, t):
+    def get_log_sigmas_learning(self, v, t):
         # OLD
         # c0 = torch.log(self.betas[t]).view(-1, 1, 1).to(v.device)
         # c1 = torch.log(self.sigmas_inflex[t]).view(-1, 1, 1).to(v.device)
@@ -131,9 +134,8 @@ class VarianceSchedule(Module):
         c0 = self.posterior_log_variance_clipped[t].view(-1, 1, 1).to(v.device) # TODO: change this if it's not working
         c1 = torch.log(self.betas[t]).view(-1, 1, 1).to(v.device)
         frac = (v+1)/2
-        log_sigmas = frac*c1 + (1-frac)*c0
-        sigmas = torch.exp(log_sigmas)
-        return sigmas
+        log_sigmas = frac*c1 + (torch.ones_like(frac)-frac)*c0
+        return log_sigmas
 
 
 class TransformerConcatLinear(Module):
@@ -220,34 +222,26 @@ class DiffusionTraj(Module):
             - Split the output in two parts: the first part is the mean, the second part is the variance
             - Get the sigmas from the variance
             - Compute simple loss, i.e. wrt the mean (L_simple)
-            - Stop the gradients and compute the variance lower bound loss (L_vlb)
+            - Stop the gradients for the mean and compute the variance lower bound loss (L_vlb)
             - Loss is L_hybrid = L_simple + lambda_vlb * L_vlb
             """
             e_theta, variance_v = out.split(2, dim=2)
-            sigmas = variance_v if not self.learned_range else self.var_sched.get_sigmas_learning(variance_v.detach(), t)
+            sigmas = variance_v if not self.learned_range \
+                else self.var_sched.get_log_sigmas_learning(variance_v.detach(), t)
+            sigmas = torch.exp(sigmas)
 
             loss_simple = F.mse_loss(e_theta.view(-1, point_dim), e_rand.view(-1, point_dim), reduction='mean')
-                loss_vlb = self.loss_vlb(
+            loss_vlb = self.loss_vlb(
                 mean=e_theta.detach(),
-                    sigma=sigmas,
+                sigma=sigmas,
                 x_start=x_0,
                 x_t=c0*x_0+c1*e_rand,
-                    t=t,
-                    pmc1=self.var_sched.posterior_mean_coef1,
-                    pmc2=self.var_sched.posterior_mean_coef2,
-                    plvc=self.var_sched.posterior_log_variance_clipped
-                    )
-            # with torch.no_grad():
-            #     loss_vlb = self.loss_vlb(
-            #         mean=e_theta,
-            #         sigma=sigmas,
-            #         x_start = x_0,
-            #         x_t = c0 * x_0 + c1 * e_rand,
-            #         t=t,
-            #         pmc1=self.var_sched.posterior_mean_coef1,
-            #         pmc2=self.var_sched.posterior_mean_coef2,
-            #         plvc=self.var_sched.posterior_log_variance_clipped
-            #         )
+                t=t,
+                pmc1=self.var_sched.posterior_mean_coef1,
+                pmc2=self.var_sched.posterior_mean_coef2,
+                plvc=self.var_sched.posterior_log_variance_clipped
+            )
+
             loss = loss_simple + self.lambda_vlb*loss_vlb
         else:
             """
@@ -270,7 +264,6 @@ class DiffusionTraj(Module):
                 z = torch.randn_like(x_T) if t > 1 else torch.zeros_like(x_T)
                 alpha = self.var_sched.alphas[t]
                 alpha_bar = self.var_sched.alpha_bars[t]
-                sigma = self.var_sched.get_sigmas(t, flexibility)
 
                 c0 = 1.0 / torch.sqrt(alpha)
                 c1 = (1 - alpha) / torch.sqrt(1 - alpha_bar)
@@ -280,12 +273,25 @@ class DiffusionTraj(Module):
                 out = self.net(x_t, beta=beta, context=context)
 
                 if self.learn_sigmas:
+                    """
+                    If we are learning sigmas:
+                    - Split the output in two parts: the first part is the mean, the second part is the variance
+                    - Compute the sigmas from the variance coming from the model:
+                        - If we are not learning the range, just take the network output
+                        - If we are learning the range, compute them using get_log_sigmas_learning
+                    - Sample from the distribution
+                    """
                     e_theta, variance_v = out.split(2, dim=2)
-                    sigma = variance_v if not self.learned_range else self.var_sched.get_sigmas_learning(variance_v, t)
+                    sigma = variance_v if not self.learned_range else self.var_sched.get_log_sigmas_learning(variance_v, t)
+                    x_next = c0 * (x_t - c1 * e_theta) + torch.exp(0.5 * sigma) * z
                 else:
+                    """
+                    If we are not learning sigmas, just sample from the distribution using the fixed sigmas
+                    """
                     e_theta = out
+                    sigma = self.var_sched.get_sigmas(t, flexibility)
+                    x_next = c0 * (x_t - c1 * e_theta) + sigma * z
 
-                x_next = c0 * (x_t - c1 * e_theta) + sigma * z
                 traj[t-1] = x_next.detach()     # Stop gradient and save trajectory.
                 traj[t] = traj[t].cpu()         # Move previous output to CPU memory.
                 if not ret_traj:
