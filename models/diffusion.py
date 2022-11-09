@@ -126,12 +126,7 @@ class VarianceSchedule(Module):
     left here for reference.
     """
     def get_log_sigmas_learning(self, v, t):
-        # OLD
-        # c0 = torch.log(self.betas[t]).view(-1, 1, 1).to(v.device)
-        # c1 = torch.log(self.sigmas_inflex[t]).view(-1, 1, 1).to(v.device)
-        # sigmas = torch.exp(v*c0 + (torch.ones_like(v)-v)*c1)
-        # return sigmas
-        c0 = self.posterior_log_variance_clipped[t].view(-1, 1, 1).to(v.device) # TODO: change this if it's not working
+        c0 = self.posterior_log_variance_clipped[t].view(-1, 1, 1).to(v.device)
         c1 = torch.log(self.betas[t]).view(-1, 1, 1).to(v.device)
         frac = (v+1)/2
         log_sigmas = frac*c1 + (torch.ones_like(frac)-frac)*c0
