@@ -76,9 +76,10 @@ def mean_flat(tensor):
     return tensor.mean(dim=list(range(1, len(tensor.shape))))
 
 def discretized_gaussian_log_likelihood(x, *, means, log_scales):
-    # Version 0 - original one
     assert x.shape == means.shape == log_scales.shape
     centered_x = x - means
+    min_x = torch.min(x) + 0.001 * torch.abs(torch.min(x))
+    max_x = torch.max(x) - 0.001 * torch.abs(torch.max(x))
     inv_stdv = torch.exp(-log_scales)
     plus_in = inv_stdv * (centered_x + 1.0 / 255.0)
     cdf_plus = approx_standard_normal_cdf(plus_in)
@@ -88,94 +89,12 @@ def discretized_gaussian_log_likelihood(x, *, means, log_scales):
     log_one_minus_cdf_min = torch.log((1.0 - cdf_min).clamp(min=1e-12))
     cdf_delta = cdf_plus - cdf_min
     log_probs = torch.where(
-        x < -0.999,
+        x < min_x,
         log_cdf_plus,
-        torch.where(x > 0.999, log_one_minus_cdf_min, torch.log(cdf_delta.clamp(min=1e-12))),
+        torch.where(x > max_x, log_one_minus_cdf_min, torch.log(cdf_delta.clamp(min=1e-12))),
     )
     assert log_probs.shape == x.shape
     return log_probs
-    
-    # # Version 1 of trying to fix it for the case - min(x) < discretization < max(x)
-    # assert x.shape == means.shape == log_scales.shape
-    # centered_x = x - means
-    # min_x = torch.min(x) + 0.001*torch.abs(torch.min(x))
-    # max_x = torch.max(x) - 0.001*torch.abs(torch.max(x))
-    # inv_stdv = torch.exp(-log_scales)
-    # plus_in = inv_stdv * (centered_x + 1.0 / 255.0)
-    # cdf_plus = approx_standard_normal_cdf(plus_in)
-    # min_in = inv_stdv * (centered_x - 1.0 / 255.0)
-    # cdf_min = approx_standard_normal_cdf(min_in)
-    # log_cdf_plus = torch.log(cdf_plus.clamp(min=1e-12))
-    # log_one_minus_cdf_min = torch.log((1.0 - cdf_min).clamp(min=1e-12))
-    # cdf_delta = cdf_plus - cdf_min
-    # log_probs = torch.where(
-    #     x < min_x,
-    #     log_cdf_plus,
-    #     torch.where(x > max_x, log_one_minus_cdf_min, torch.log(cdf_delta.clamp(min=1e-12))),
-    # )
-    # assert log_probs.shape == x.shape
-    # return log_probs
-
-    # # Version 2 of trying to fix it for the case - rescaling x to be in [-1,1] just before returning the log likelihood
-    # assert x.shape == means.shape == log_scales.shape
-    # centered_x = x - means
-    # min_x = torch.min(x) + 0.001*torch.abs(torch.min(x))
-    # max_x = torch.max(x) - 0.001*torch.abs(torch.max(x))
-    # inv_stdv = torch.exp(-log_scales)
-    # plus_in = inv_stdv * (centered_x + 1.0 / 255.0)
-    # cdf_plus = approx_standard_normal_cdf(plus_in)
-    # min_in = inv_stdv * (centered_x - 1.0 / 255.0)
-    # cdf_min = approx_standard_normal_cdf(min_in)
-    # log_cdf_plus = torch.log(cdf_plus.clamp(min=1e-12))
-    # log_one_minus_cdf_min = torch.log((1.0 - cdf_min).clamp(min=1e-12))
-    # cdf_delta = cdf_plus - cdf_min
-    # rescaled_x = deepcopy(x)
-    # # rescale third dimension to be in [-1,1]
-    # rescaled_x[:,:,0] = (rescaled_x[:,:,0] - min_x) / (max_x - min_x) if min_x != max_x else rescaled_x[:,:,0]
-    # rescaled_x[:,:,0] = 2*rescaled_x[:,:,0] - 1 if min_x != max_x else rescaled_x[:,:,0]
-    # log_probs = torch.where(
-    #     rescaled_x < -0.999,
-    #     log_cdf_plus,
-    #     torch.where(rescaled_x > 0.999, log_one_minus_cdf_min, torch.log(cdf_delta.clamp(min=1e-12))),
-    # )
-    # assert log_probs.shape == x.shape
-    # return log_probs
-
-    # # Version 3 of trying to fix it for the case - rescaling x to be in [-1,1] before doing everything else
-    # assert x.shape == means.shape == log_scales.shape
-    # min_x = torch.min(x) + 0.001*torch.abs(torch.min(x))
-    # max_x = torch.max(x) - 0.001*torch.abs(torch.max(x))
-    # x[:,:,0] = (x[:,:,0] - min_x) / (max_x - min_x) if min_x != max_x else x[:,:,0]
-    # x[:,:,0] = 2*x[:,:,0] - 1 if min_x != max_x else x[:,:,0]
-    # centered_x = x - means
-    # inv_stdv = torch.exp(-log_scales)
-    # plus_in = inv_stdv * (centered_x + 1.0 / 255.0)
-    # cdf_plus = approx_standard_normal_cdf(plus_in)
-    # min_in = inv_stdv * (centered_x - 1.0 / 255.0)
-    # cdf_min = approx_standard_normal_cdf(min_in)
-    # log_cdf_plus = torch.log(cdf_plus.clamp(min=1e-12))
-    # log_one_minus_cdf_min = torch.log((1.0 - cdf_min).clamp(min=1e-12))
-    # cdf_delta = cdf_plus - cdf_min
-    # log_probs = torch.where(
-    #     x < -0.999,
-    #     log_cdf_plus,
-    #     torch.where(x > 0.999, log_one_minus_cdf_min, torch.log(cdf_delta.clamp(min=1e-12))),
-    # )
-    # assert log_probs.shape == x.shape
-    # return log_probs
-
-    # # Version 4 of trying to fix it for the case - just don't differentiate and always return the delta
-    # assert x.shape == means.shape == log_scales.shape
-    # centered_x = x - means
-    # inv_stdv = torch.exp(-log_scales)
-    # plus_in = inv_stdv * (centered_x + 1.0 / 255.0)
-    # cdf_plus = approx_standard_normal_cdf(plus_in)
-    # min_in = inv_stdv * (centered_x - 1.0 / 255.0)
-    # cdf_min = approx_standard_normal_cdf(min_in)
-    # cdf_delta = cdf_plus - cdf_min
-    # log_probs = cdf_delta
-    # assert log_probs.shape == x.shape
-    # return log_probs
 
 def approx_standard_normal_cdf(x):
     """
