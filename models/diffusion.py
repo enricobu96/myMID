@@ -5,7 +5,7 @@ import numpy as np
 import torch.nn as nn
 from .common import *
 import pdb
-from .diffusion_utils import _extract_into_tensor, _vb_terms_bpd
+from .diffusion_utils import _extract_into_tensor, _vb_terms_bpd, mean_flat
 
 class VarianceSchedule(Module):
     """
@@ -237,12 +237,13 @@ class DiffusionTraj(Module):
                 plvc=self.var_sched.posterior_log_variance_clipped
             )
 
-            loss = loss_simple + self.lambda_vlb*loss_vlb
+            loss = loss_simple + self.lambda_vlb*loss_vlb # TODO: implement importance sampling also here
         else:
             """
             If we are not learning sigmas, just compute L_simple
             """
-            loss = F.mse_loss(out.view(-1, point_dim), e_rand.view(-1, point_dim), reduction='mean')
+            # loss = F.mse_loss(out.view(-1, point_dim), e_rand.view(-1, point_dim), reduction='none')
+            loss = mean_flat((out - e_rand) ** 2)
 
         return loss
 
