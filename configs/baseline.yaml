@@ -31,9 +31,12 @@ variance_sched: cosine
 cosine_sched: sigmoid
 
 # Learn variances
-learn_sigmas: True
-learned_range: True
+learn_sigmas: False
+learned_range: False
 lambda_vlb: 0.001
+
+# Reduce gradient noise
+reduce_grad_noise: True
 
 ############### Trajectron++ Config #################
 # Misc

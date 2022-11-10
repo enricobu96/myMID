@@ -25,6 +25,8 @@ import wandb
 from evaluation.trajectory_utils import prediction_output_to_trajectories
 from evaluation.visualization.visualization import plot_wandb
 
+from utils.resample import UniformSampler, LossSecondMomentResampler
+
 class MID():
     """
     Motion Indeterminacy Diffusion model from MID paper. The pipeline (when training)
@@ -92,18 +94,30 @@ class MID():
                        tags=None, name=None)
 
         for epoch in range(1, self.config.epochs + 1):
-            train_losses = {}
             self.train_dataset.augment = self.config.augment
             for node_type, data_loader in self.train_data_loader.items():
                 pbar = tqdm(data_loader, ncols=80)
                 for batch in pbar:
-
-                    self.optimizer.zero_grad()
-                    train_loss = self.model.get_loss(batch, node_type)
-                    train_losses[str(batch)] = train_loss
-                    pbar.set_description(f"Epoch {epoch}, {node_type} MSE: {train_loss.item():.2f}")
-                    train_loss.backward()
-                    self.optimizer.step()
+                    # Resampling stuff
+                    t_idx, weights = self.schedule_resampler.sample(
+                        batch_size=len(batch[0]),
+                        device=self.config.device
+                        )
+                    if not self.config.reduce_grad_noise:
+                        self.optimizer.zero_grad()
+                        losses = self.model.get_loss(batch, node_type)
+                        train_loss = torch.mean(losses)
+                        pbar.set_description(f"Epoch {epoch}, {node_type} MSE: {train_loss.item():.2f}")
+                        train_loss.backward()
+                        self.optimizer.step()
+                    else:
+                        self.optimizer.zero_grad()
+                        losses = self.model.get_loss(batch, node_type)
+                        self.schedule_resampler.update_with_local_losses(t_idx, losses.detach())
+                        train_loss = (losses * weights).mean()
+                        pbar.set_description(f"Epoch {epoch}, {node_type} MSE: {train_loss.item():.2f}")
+                        train_loss.backward()
+                        self.optimizer.step()
 
             self.train_dataset.augment = False
             if epoch % self.config.eval_every == 0:
@@ -315,6 +329,7 @@ class MID():
         self._build_encoder_config()
         self._build_encoder()
         self._build_model()
+        self._build_resampler()
         self._build_train_loader()
         self._build_eval_loader()
 
@@ -404,7 +419,6 @@ class MID():
         self.encoder.set_environment(self.train_env)
         self.encoder.set_annealing_params()
 
-
     def _build_model(self):
         """
         Builds model and redirect it to device (cuda/cpu). Model is an autoencoder (see documentation) with Trajectron as encoder.
@@ -419,6 +433,16 @@ class MID():
         if self.config.eval_mode:
             self.model.load_state_dict(self.checkpoint['ddpm'])
         print("> Model built!")
+
+    """
+    Resampler stuff
+    Build the resampler for reducing gradient noise
+    """
+    def _build_resampler(self):
+        if self.config.reduce_grad_noise:
+            self.schedule_resampler = LossSecondMomentResampler(self.model.diffusion.var_sched)
+        else:
+            self.schedule_resampler = UniformSampler(self.model.diffusion.var_sched)
 
     def _build_train_loader(self):
         """
