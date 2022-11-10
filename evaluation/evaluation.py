@@ -72,6 +72,8 @@ def compute_kde_nll(predicted_trajs, gt_traj):
                 kde_ll += pdf / (num_timesteps * num_batches)
             except np.linalg.LinAlgError:
                 kde_ll = np.nan
+            except ValueError: # Propagate NaNs without crashing
+                kde_ll = np.nan
 
     return -kde_ll
 

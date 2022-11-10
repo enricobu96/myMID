@@ -1,6 +1,6 @@
 ############ MID Config #############
 # Optimizer
-lr: 0.0001
+lr: 0.001
 
 # Dataset
 data_dir: processed_data_noise # The path with the directory with XXX.pkl
@@ -17,7 +17,7 @@ seed: 123
 eval_every: 2
 
 # Testing
-eval_at: 120
+eval_at: 3
 eval_mode: False
 
 # Visualization
@@ -27,12 +27,13 @@ use_wandb: False
 sdd_longterm: False
 
 # Cosine schedule. Choose from: two_fifth_pi_cos_squared, piecewise_cos_inv, clipped_two_fifth, sigmoid, sigmoid_2
-variance_sched: linear
+variance_sched: cosine
 cosine_sched: sigmoid
 
 # Learn variances
 learn_sigmas: True
-lambda_vlb: 0.0001
+learned_range: True
+lambda_vlb: 0.001
 
 ############### Trajectron++ Config #################
 # Misc
@@ -59,5 +60,5 @@ scene_freq_mult_viz: False
 no_edge_encoding: False
 
 # Data Parameters
-device: cuda
-eval_device: cuda
+device: cpu
+eval_device: cpu

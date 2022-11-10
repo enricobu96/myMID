@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+from copy import deepcopy
 
 def _extract_into_tensor(arr, timesteps, broadcast_shape):
     """
@@ -58,7 +59,8 @@ def q_posterior_mean_variance(x_start, x_t, t, pmc1, pmc2, plvc):
 Utility functions.
 - normal_kl(mean1, logvar1, mean2, logvar2) : KL divergence between two normal distributions
 - mean_flat(tensor): mean over all non-batch dimensions
-- discretized_gaussian_log_likelihood (x, means, log_scales): log likelihood of a gaussian distribution to the input data
+- discretized_gaussian_log_likelihood (x, means, log_scales): log likelihood of a gaussian distribution to the input data.
+  This function has been modified: now it applies logarithm to the +/- 0.001*torch.abs(torch.min(x)) value instead of just 0.001.
 - approx_standard_normal_cdf(x): (fast) approximation of the standard normal cdf
 """
 def normal_kl(mean1, logvar1, mean2, logvar2):
@@ -76,8 +78,10 @@ def mean_flat(tensor):
 def discretized_gaussian_log_likelihood(x, *, means, log_scales):
     assert x.shape == means.shape == log_scales.shape
     centered_x = x - means
+    min_x = torch.min(x) + 0.001 * torch.abs(torch.min(x))
+    max_x = torch.max(x) - 0.001 * torch.abs(torch.max(x))
     inv_stdv = torch.exp(-log_scales)
-    plus_in = inv_stdv * (centered_x + 1 / 255.0)
+    plus_in = inv_stdv * (centered_x + 1.0 / 255.0)
     cdf_plus = approx_standard_normal_cdf(plus_in)
     min_in = inv_stdv * (centered_x - 1.0 / 255.0)
     cdf_min = approx_standard_normal_cdf(min_in)
@@ -85,9 +89,9 @@ def discretized_gaussian_log_likelihood(x, *, means, log_scales):
     log_one_minus_cdf_min = torch.log((1.0 - cdf_min).clamp(min=1e-12))
     cdf_delta = cdf_plus - cdf_min
     log_probs = torch.where(
-        x < -0.999,
+        x < min_x,
         log_cdf_plus,
-        torch.where(x > 0.999, log_one_minus_cdf_min, torch.log(cdf_delta.clamp(min=1e-12))),
+        torch.where(x > max_x, log_one_minus_cdf_min, torch.log(cdf_delta.clamp(min=1e-12))),
     )
     assert log_probs.shape == x.shape
     return log_probs

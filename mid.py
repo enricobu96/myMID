@@ -193,7 +193,6 @@ class MID():
                                  'fde': fde}
                 if self.config.use_wandb:
                     wandb.log({'learning_rate': self.optimizer.param_groups[0]['lr']}, step=epoch)
-                    wandb.log(train_losses, step=epoch)
                     wandb.log(train_metrics, step=epoch)
                 
                 print(f"Epoch {epoch} Best Of 20: ADE: {ade} FDE: {fde} KDE: {kde}")

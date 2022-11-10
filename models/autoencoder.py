@@ -46,7 +46,8 @@ class AutoEncoder(Module):
                 cosine_sched=self.config.cosine_sched
             ),
             learn_sigmas=self.config.learn_sigmas,
-            lambda_vlb=self.config.lambda_vlb
+            lambda_vlb=self.config.lambda_vlb,
+            learned_range=self.config.learned_range
         )
 
     def encode(self, batch,node_type):
