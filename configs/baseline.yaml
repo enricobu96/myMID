@@ -31,12 +31,13 @@ variance_sched: cosine
 cosine_sched: sigmoid
 
 # Learn variances
-learn_sigmas: False
-learned_range: False
+learn_sigmas: True
+learned_range: True
 lambda_vlb: 0.001
 
-# Reduce gradient noise
+# Reduce gradient noise. Loss function can be hybrid (L_simple + lambda*L_vlb) or vlb (L_vlb only)
 reduce_grad_noise: True
+loss_type: vlb
 
 ############### Trajectron++ Config #################
 # Misc

@@ -103,21 +103,17 @@ class MID():
                         batch_size=len(batch[0]),
                         device=self.config.device
                         )
+                    self.optimizer.zero_grad()
+                    losses = self.model.get_loss(batch, node_type)
+                    
                     if not self.config.reduce_grad_noise:
-                        self.optimizer.zero_grad()
-                        losses = self.model.get_loss(batch, node_type)
                         train_loss = torch.mean(losses)
-                        pbar.set_description(f"Epoch {epoch}, {node_type} MSE: {train_loss.item():.2f}")
-                        train_loss.backward()
-                        self.optimizer.step()
                     else:
-                        self.optimizer.zero_grad()
-                        losses = self.model.get_loss(batch, node_type)
                         self.schedule_resampler.update_with_local_losses(t_idx, losses.detach())
                         train_loss = (losses * weights).mean()
-                        pbar.set_description(f"Epoch {epoch}, {node_type} MSE: {train_loss.item():.2f}")
-                        train_loss.backward()
-                        self.optimizer.step()
+                    pbar.set_description(f"Epoch {epoch}, {node_type} MSE: {train_loss.item():.2f}")
+                    train_loss.backward()
+                    self.optimizer.step()
 
             self.train_dataset.augment = False
             if epoch % self.config.eval_every == 0:
