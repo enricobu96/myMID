@@ -185,13 +185,14 @@ class DiffusionTraj(Module):
     DiffusionTraj class, used as diffusion model for trajectories (crucial part of the project).
     This contains in turn the net (in this case TransformerConcatLinear) and the variance schedule.
     """
-    def __init__(self, net, var_sched:VarianceSchedule, learn_sigmas=False, learned_range=False, lambda_vlb=1e-4):
+    def __init__(self, net, var_sched:VarianceSchedule, learn_sigmas=False, learned_range=False, lambda_vlb=1e-4, loss_type='hybrid'):
         super().__init__()
         self.net = net
         self.var_sched = var_sched
         self.learn_sigmas = learn_sigmas
         self.learned_range = learned_range
         self.lambda_vlb = lambda_vlb
+        self.loss_type = loss_type
 
     def get_loss(self, x_0, context, t=None):
         
@@ -224,20 +225,35 @@ class DiffusionTraj(Module):
             sigmas = variance_v if not self.learned_range \
                 else self.var_sched.get_log_sigmas_learning(variance_v.detach(), t)
             sigmas = torch.exp(sigmas)
-
-            loss_simple = F.mse_loss(e_theta.view(-1, point_dim), e_rand.view(-1, point_dim), reduction='mean')
-            loss_vlb = self.loss_vlb(
-                mean=e_theta.detach(),
-                sigma=sigmas,
-                x_start=x_0,
-                x_t=c0*x_0+c1*e_rand,
-                t=t,
-                pmc1=self.var_sched.posterior_mean_coef1,
-                pmc2=self.var_sched.posterior_mean_coef2,
-                plvc=self.var_sched.posterior_log_variance_clipped
-            )
-
-            loss = loss_simple + self.lambda_vlb*loss_vlb # TODO: implement importance sampling also here
+            
+            if self.loss_type == 'hybrid':
+                loss_simple = mean_flat((e_theta - e_rand) ** 2)
+                loss_vlb = self.loss_vlb(
+                    mean=e_theta.detach(),
+                    sigma=sigmas,
+                    x_start=x_0,
+                    x_t=c0*x_0+c1*e_rand,
+                    t=t,
+                    pmc1=self.var_sched.posterior_mean_coef1,
+                    pmc2=self.var_sched.posterior_mean_coef2,
+                    plvc=self.var_sched.posterior_log_variance_clipped
+                )
+                loss = loss_simple + self.lambda_vlb*loss_vlb
+            elif self.loss_type == 'vlb':
+                loss_vlb = self.loss_vlb(
+                    mean=e_theta,
+                    sigma=sigmas,
+                    x_start=x_0,
+                    x_t=c0*x_0+c1*e_rand,
+                    t=t,
+                    pmc1=self.var_sched.posterior_mean_coef1,
+                    pmc2=self.var_sched.posterior_mean_coef2,
+                    plvc=self.var_sched.posterior_log_variance_clipped
+                )
+                loss = loss_vlb
+            else:
+                raise NotImplementedError('Loss type not implemented')
+            
         else:
             """
             If we are not learning sigmas, just compute L_simple

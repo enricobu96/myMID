@@ -40,8 +40,7 @@ def _vb_terms_bpd(mean, sigma, x_start, x_t, t, pmc1, pmc2, plvc):
     decoder_nll = mean_flat(decoder_nll) / np.log(2.0)
 
     output = torch.where((torch.tensor(t).to(x_start.device) == 0), decoder_nll, kl)
-    output = torch.mean(output)
-
+    
     return output
 
 def q_posterior_mean_variance(x_start, x_t, t, pmc1, pmc2, plvc):
