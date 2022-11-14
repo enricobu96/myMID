@@ -55,24 +55,15 @@ class LossAwareSampler(ScheduleSampler):
         """
         Update the reweighting using losses from a model.
 
-        Call this method from each rank with a batch of timesteps and the
-        corresponding losses for each of those timesteps.
-        This method will perform synchronization to make sure all of the ranks
-        maintain the exact same reweighting.
+        Differently from the original IDDPM code, we don't actually need to:
+        - handle multiple sizes of batches
+        - handle multithreading
+        Therefore, update_with_local_losses() corresponds to update_with_all_losses().
 
         :param local_ts: an integer Tensor of timesteps.
         :param local_losses: a 1D Tensor of losses.
         """
-        batch_sizes = [local_losses.shape[0]]
-        max_bs = max(batch_sizes)
-
-        timestep_batches = [torch.zeros(max_bs).to(local_ts) for bs in batch_sizes]
-        loss_batches = [torch.zeros(max_bs).to(local_losses) for bs in batch_sizes]
-        timesteps = [
-            x.item() for y, bs in zip(timestep_batches, batch_sizes) for x in y[:bs]
-        ]
-        losses = [x.item() for y, bs in zip(loss_batches, batch_sizes) for x in y[:bs]]
-        self.update_with_all_losses(timesteps, losses)
+        self.update_with_all_losses(local_ts, local_losses)
 
     @abstractmethod
     def update_with_all_losses(self, ts, losses):
