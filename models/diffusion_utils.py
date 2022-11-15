@@ -30,7 +30,7 @@ def _vb_terms_bpd(mean, sigma, x_start, x_t, t, pmc1, pmc2, plvc):
         pmc2=pmc2,
         plvc=plvc
         )
-    log_variance = sigma
+    log_variance = torch.log(sigma)
     kl = normal_kl(true_mean, true_log_variance_clipped, mean, log_variance)
     kl = mean_flat(kl) / np.log(2.0)
 
