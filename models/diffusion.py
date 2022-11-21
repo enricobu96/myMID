@@ -212,54 +212,64 @@ class DiffusionTraj(Module):
 
         out = self.net(c0 * x_0 + c1 * e_rand, beta=beta, context=context)
 
-        if self.learn_sigmas:
+        if self.loss_type == 'hybrid':
             """
-            If we are learning sigmas:
-            - Split the output in two parts: the first part is the mean, the second part is the variance
-            - Get the sigmas from the variance
-            - Compute simple loss, i.e. wrt the mean (L_simple)
-            - Stop the gradients for the mean and compute the variance lower bound loss (L_vlb)
-            - Loss is L_hybrid = L_simple + lambda_vlb * L_vlb
+            If loss type is hybrid, it's obvious that we are also learning sigmas. Therefore, the following happens:
+            1. e_theta and variance nodes are computed by splitting the output
+            2. sigmas are computed in the following way:
+                2.1 If we are learning within the range, get_log_sigmas_learning is used to compute final sigmas
+                2.2 If we leave the model to train without the range, the raw output is used as sigmas
+            3. L_simple is computed as usually
+            4. L_vlb is computed by detaching the mean
+            5. Final loss is L_simple + lambda * L_vlb
             """
             e_theta, variance_v = out.split(2, dim=2)
             sigmas = variance_v if not self.learned_range \
                 else self.var_sched.get_log_sigmas_learning(variance_v.detach(), t)
             sigmas = torch.exp(sigmas)
             
-            if self.loss_type == 'hybrid':
-                loss_simple = mean_flat((e_theta - e_rand) ** 2)
-                loss_vlb = self.loss_vlb(
-                    mean=e_theta.detach(),
-                    sigma=sigmas,
-                    x_start=x_0,
-                    x_t=c0*x_0+c1*e_rand,
-                    t=t,
-                    pmc1=self.var_sched.posterior_mean_coef1,
-                    pmc2=self.var_sched.posterior_mean_coef2,
-                    plvc=self.var_sched.posterior_log_variance_clipped
-                )
-                loss = loss_simple + self.lambda_vlb*loss_vlb
-            elif self.loss_type == 'vlb':
-                loss_vlb = self.loss_vlb(
-                    mean=e_theta,
-                    sigma=sigmas,
-                    x_start=x_0,
-                    x_t=c0*x_0+c1*e_rand,
-                    t=t,
-                    pmc1=self.var_sched.posterior_mean_coef1,
-                    pmc2=self.var_sched.posterior_mean_coef2,
-                    plvc=self.var_sched.posterior_log_variance_clipped
-                )
-                loss = loss_vlb
-            else:
-                raise NotImplementedError('Loss type not implemented')
+            loss_simple = mean_flat((e_theta - e_rand) ** 2)
             
-        else:
+            loss_vlb = self.loss_vlb(
+                mean=e_theta.detach(),
+                sigma=sigmas,
+                x_start=x_0,
+                x_t=c0*x_0+c1*e_rand,
+                t=t,
+                pmc1=self.var_sched.posterior_mean_coef1,
+                pmc2=self.var_sched.posterior_mean_coef2,
+                plvc=self.var_sched.posterior_log_variance_clipped
+            )
+            loss = loss_simple + self.lambda_vlb*loss_vlb
+        elif self.loss_type == 'vlb':
             """
-            If we are not learning sigmas, just compute L_simple
+            If the loss type is hybrid, we avoid computing L_simple since it's not needed. Also in this case
+            we are obviously learning sigmas.
             """
-            # loss = F.mse_loss(out.view(-1, point_dim), e_rand.view(-1, point_dim), reduction='none')
+            e_theta, variance_v = out.split(2, dim=2)
+            sigmas = variance_v if not self.learned_range \
+                else self.var_sched.get_log_sigmas_learning(variance_v.detach(), t)
+            sigmas = torch.exp(sigmas)
+            
+            loss_vlb = self.loss_vlb(
+                mean=e_theta,
+                sigma=sigmas,
+                x_start=x_0,
+                x_t=c0*x_0+c1*e_rand,
+                t=t,
+                pmc1=self.var_sched.posterior_mean_coef1,
+                pmc2=self.var_sched.posterior_mean_coef2,
+                plvc=self.var_sched.posterior_log_variance_clipped
+            )
+            loss = loss_vlb
+        elif self.loss_type == 'simple':
+            """
+            If the loss type is simple, we just compute L_simple in the usual way. 
+            Obviously, in this case e_theta is the entire output from the network.
+            """
             loss = mean_flat((out - e_rand) ** 2)
+        else:
+            raise NotImplementedError('Loss type not implemented')
 
         return loss
 

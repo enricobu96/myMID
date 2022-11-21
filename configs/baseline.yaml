@@ -30,14 +30,16 @@ sdd_longterm: False
 variance_sched: cosine
 cosine_sched: sigmoid
 
+# Loss function. This can be simple (MSE), hybrid (L_simple+lambda*L_vlb) or vlb (L_vlb)
+loss_type: vlb
+
 # Learn variances
 learn_sigmas: True
 learned_range: True
 lambda_vlb: 0.001
 
-# Reduce gradient noise. Loss function can be hybrid (L_simple + lambda*L_vlb) or vlb (L_vlb only)
+# Reduce gradient noise
 reduce_grad_noise: True
-loss_type: vlb
 
 ############### Trajectron++ Config #################
 # Misc
@@ -64,5 +66,5 @@ scene_freq_mult_viz: False
 no_edge_encoding: False
 
 # Data Parameters
-device: cpu
-eval_device: cpu
+device: cuda
+eval_device: cuda
