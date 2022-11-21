@@ -77,21 +77,13 @@ def mean_flat(tensor):
 def discretized_gaussian_log_likelihood(x, *, means, log_scales):
     assert x.shape == means.shape == log_scales.shape
     centered_x = x - means
-    min_x = torch.min(x) + 0.001 * torch.abs(torch.min(x))
-    max_x = torch.max(x) - 0.001 * torch.abs(torch.max(x))
     inv_stdv = torch.exp(-log_scales)
     plus_in = inv_stdv * (centered_x + 1.0 / 255.0)
     cdf_plus = approx_standard_normal_cdf(plus_in)
     min_in = inv_stdv * (centered_x - 1.0 / 255.0)
     cdf_min = approx_standard_normal_cdf(min_in)
-    log_cdf_plus = torch.log(cdf_plus.clamp(min=1e-12))
-    log_one_minus_cdf_min = torch.log((1.0 - cdf_min).clamp(min=1e-12))
     cdf_delta = cdf_plus - cdf_min
-    log_probs = torch.where(
-        x < min_x,
-        log_cdf_plus,
-        torch.where(x > max_x, log_one_minus_cdf_min, torch.log(cdf_delta.clamp(min=1e-12))),
-    )
+    log_probs = cdf_delta
     assert log_probs.shape == x.shape
     return log_probs
 

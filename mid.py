@@ -182,7 +182,7 @@ class MID():
                         except OSError:
                             if not os.path.isdir('images'):
                                 raise
-                        plt.savefig('images/train_traj_epoch'+str(epoch)+'_scene'+str(sc)+'.png')
+                        plt.savefig('images/'+self.config["dataset"]+'_train_traj_epoch'+str(epoch)+'_scene'+str(sc)+'.png')
                         wandb.log({"train/traj_image": wandb.Image(fig), "scene": str(sc)}, step=epoch)
                         sc += 1
                         plt.close()
@@ -290,7 +290,7 @@ class MID():
                         except OSError:
                             if not os.path.isdir('images'):
                                 raise
-                        plt.savefig('images/test_traj_epoch'+str(epoch)+'_scene'+str(sc)+'_it'+str(j)+'.png')
+                        plt.savefig('images/'+self.config["dataset"]+'_test_traj_epoch'+str(epoch)+'_scene'+str(sc)+'_it'+str(j)+'.png')
                         wandb.log({"train/test_image": wandb.Image(fig), "scene": str(sc)}, step=epoch)
                         sc += 1
                         plt.close()
