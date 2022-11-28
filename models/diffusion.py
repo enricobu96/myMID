@@ -225,13 +225,16 @@ class DiffusionTraj(Module):
 
         if self.loss_type == 'hybrid':
             loss = self._loss_hybrid(x_0, out, t, c0, c1, e_rand, context)
+            
         elif self.loss_type == 'vlb':
-            if self.ensemble_loss and (t < self.ehs or t>self.var_sched.steps-self.ehs):
-                loss = self._loss_hybrid(x_0, out, t, c0, c1, e_rand, context)
+            if self.ensemble_loss:
+                loss = self._loss_ensemble(x_0, out, t, c0, c1, e_rand, context)
             else:
                 loss = self._loss_vlb(x_0, out, t, c0, c1, e_rand, context)
+                
         elif self.loss_type == 'simple':
             loss = self._loss_simple(out, e_rand)
+            
         else:
             raise NotImplementedError('Loss type not implemented')
 
@@ -354,6 +357,53 @@ class DiffusionTraj(Module):
         """
         loss = mean_flat((out - e_rand) ** 2)
         return loss
+    
+    def _loss_ensemble(self, x_0, out, t, c0, c1, e_rand, context):
+        # like loss_hybrid but L_vlb for the entries where t<self.ehs and t>self.var_sched.steps - self.ehs
+        # and hybrid elsewhere
+        t = torch.tensor(t)
+        mask = torch.where((t < self.ehs) | (t > self.var_sched.num_steps-self.ehs), torch.tensor(1), torch.tensor(0))
+        mask_for_vlb = torch.argwhere(mask == 1).flatten()
+        mask_for_hybrid = torch.argwhere(mask == 0).flatten()
+        
+        e_theta, variance_v = out.split(2, dim=2)
+        sigmas = variance_v if not self.learned_range \
+            else self.var_sched.get_log_sigmas_learning(variance_v.detach(), t)
+        sigmas = torch.exp(sigmas)
+        
+        # Compute vlb        
+        loss_vlb = _vb_terms_bpd(
+            mean=e_theta[mask_for_vlb],
+            sigma=sigmas[mask_for_vlb],
+            x_start=x_0[mask_for_vlb],
+            x_t=c0[mask_for_vlb] * x_0[mask_for_vlb] + c1[mask_for_vlb] * e_rand[mask_for_vlb],
+            t=list(t[mask_for_vlb]),
+            pmc1=self.var_sched.posterior_mean_coef1, # not sure about this, TODO check
+            pmc2=self.var_sched.posterior_mean_coef2,
+            plvc=self.var_sched.posterior_log_variance_clipped
+            )
+        
+        # compute hybrid
+        loss_simple = mean_flat((e_theta[mask_for_hybrid] - e_rand[mask_for_hybrid]) ** 2)
+        loss_vlb_hybrid = _vb_terms_bpd(
+            mean=e_theta[mask_for_hybrid].detach(),
+            sigma=sigmas[mask_for_hybrid],
+            x_start=x_0[mask_for_hybrid],
+            x_t=c0[mask_for_hybrid]*x_0[mask_for_hybrid]+c1[mask_for_hybrid]*e_rand[mask_for_hybrid],
+            t=list(t[mask_for_hybrid]),
+            pmc1=self.var_sched.posterior_mean_coef1,
+            pmc2=self.var_sched.posterior_mean_coef2,
+            plvc=self.var_sched.posterior_log_variance_clipped
+        )
+        loss_hybrid = loss_simple + self.lambda_vlb*loss_vlb_hybrid
+        
+        final_loss = torch.empty(out.shape[0])
+        for i, x in enumerate(mask_for_vlb):
+            final_loss[x] = loss_vlb[i]
+        for i, x in enumerate(mask_for_hybrid):
+            final_loss[x] = loss_hybrid[i]
+        
+        return final_loss
 
 """
 NOISE SCHEDULE FUNCTIONS
@@ -442,7 +492,6 @@ class TransformerLinear(Module):
         self.linear = nn.Linear(128, point_dim)
 
     def forward(self, x, beta, context):
-        print('helo')
         batch_size = x.size(0)
         beta = beta.view(batch_size, 1, 1)          # (B, 1, 1)
         context = context.view(batch_size, 1, -1)   # (B, 1, F)

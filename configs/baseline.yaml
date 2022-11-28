@@ -32,7 +32,7 @@ cosine_sched: sigmoid
 
 # Loss function. This can be simple (MSE), hybrid (L_simple+lambda*L_vlb) or vlb (L_vlb)
 loss_type: vlb
-ensemble_loss: False # this should work only when vlb is selected to be the loss type
+ensemble_loss: True # this should work only when vlb is selected to be the loss type
 ensemble_hybrid_steps: 10
 
 # Learn variances
