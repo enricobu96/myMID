@@ -37,7 +37,7 @@ class AutoEncoder(Module):
                 residual=False,
                 longterm=self.config.sdd_longterm,
                 dataset=self.config['dataset'],
-                learn_sigmas=self.config.learn_sigmas
+                learn_sigmas=self.config.learn_sigmas,
             ),
             var_sched = VarianceSchedule(
                 num_steps=100,
@@ -47,7 +47,8 @@ class AutoEncoder(Module):
             ),
             learn_sigmas=self.config.learn_sigmas,
             lambda_vlb=self.config.lambda_vlb,
-            learned_range=self.config.learned_range
+            learned_range=self.config.learned_range,
+            loss_type=self.config.loss_type
         )
 
     def encode(self, batch,node_type):
