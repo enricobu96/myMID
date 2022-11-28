@@ -361,8 +361,8 @@ class DiffusionTraj(Module):
     def _loss_ensemble(self, x_0, out, t, c0, c1, e_rand, context):
         # like loss_hybrid but L_vlb for the entries where t<self.ehs and t>self.var_sched.steps - self.ehs
         # and hybrid elsewhere
-        t = torch.tensor(t)
-        mask = torch.where((t < self.ehs) | (t > self.var_sched.num_steps-self.ehs), torch.tensor(1), torch.tensor(0))
+        tt = torch.tensor(t)
+        mask = torch.where((tt < self.ehs) | (tt > self.var_sched.num_steps-self.ehs), torch.tensor(1), torch.tensor(0))
         mask_for_vlb = torch.argwhere(mask == 1).flatten()
         mask_for_hybrid = torch.argwhere(mask == 0).flatten()
         
@@ -370,14 +370,14 @@ class DiffusionTraj(Module):
         sigmas = variance_v if not self.learned_range \
             else self.var_sched.get_log_sigmas_learning(variance_v.detach(), t)
         sigmas = torch.exp(sigmas)
-        
+
         # Compute vlb        
         loss_vlb = _vb_terms_bpd(
             mean=e_theta[mask_for_vlb],
             sigma=sigmas[mask_for_vlb],
             x_start=x_0[mask_for_vlb],
             x_t=c0[mask_for_vlb] * x_0[mask_for_vlb] + c1[mask_for_vlb] * e_rand[mask_for_vlb],
-            t=list(t[mask_for_vlb]),
+            t=tt[mask_for_vlb].tolist(),
             pmc1=self.var_sched.posterior_mean_coef1, # not sure about this, TODO check
             pmc2=self.var_sched.posterior_mean_coef2,
             plvc=self.var_sched.posterior_log_variance_clipped
@@ -390,14 +390,14 @@ class DiffusionTraj(Module):
             sigma=sigmas[mask_for_hybrid],
             x_start=x_0[mask_for_hybrid],
             x_t=c0[mask_for_hybrid]*x_0[mask_for_hybrid]+c1[mask_for_hybrid]*e_rand[mask_for_hybrid],
-            t=list(t[mask_for_hybrid]),
+            t=tt[mask_for_hybrid].tolist(),
             pmc1=self.var_sched.posterior_mean_coef1,
             pmc2=self.var_sched.posterior_mean_coef2,
             plvc=self.var_sched.posterior_log_variance_clipped
         )
         loss_hybrid = loss_simple + self.lambda_vlb*loss_vlb_hybrid
         
-        final_loss = torch.empty(out.shape[0])
+        final_loss = torch.empty(out.shape[0]).to(loss_vlb.device)
         for i, x in enumerate(mask_for_vlb):
             final_loss[x] = loss_vlb[i]
         for i, x in enumerate(mask_for_hybrid):

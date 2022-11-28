@@ -86,6 +86,8 @@ class MID():
         """
         Method for model training
         """
+        torch.cuda.empty_cache()
+
         if wandb.run is None and self.config.use_wandb:
             wandb.init(settings=wandb.Settings(start_method="thread"),
                        project="myMID", config=self.config,
@@ -222,6 +224,8 @@ class MID():
 
 
     def eval(self):
+        torch.cuda.empty_cache()
+        
         epoch = self.config.eval_at
 
         if wandb.run is None and self.config.use_wandb:
