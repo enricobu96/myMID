@@ -192,6 +192,9 @@ class MID():
                 kde = np.mean(eval_kde_batch_errors)
 
                 if self.config.dataset == "eth":
+                    """
+                    Check https://arxiv.org/pdf/1907.08752.pdf to understand why /0.6
+                    """
                     ade = ade/0.6
                     fde = fde/0.6
                 elif self.config.dataset == "sdd":
