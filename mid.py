@@ -13,6 +13,7 @@ from tensorboardX import SummaryWriter
 from tqdm.auto import tqdm
 import pickle
 from matplotlib import pyplot as plt
+import pandas as pd
 
 from dataset import EnvironmentDataset, collate, get_timesteps_data, restore
 from models.autoencoder import AutoEncoder
@@ -95,6 +96,12 @@ class MID():
                        job_type=self.config['dataset'],
                        tags=None, name=None)
 
+        if self.config.save_losses_plots:
+            it_steps = []
+            i = 0
+            log_loss = []
+            log_fake_loss = []
+            fake_loss = nn.MSELoss(reduction='mean')
         for epoch in range(1, self.config.epochs + 1):
             self.train_dataset.augment = self.config.augment
             for node_type, data_loader in self.train_data_loader.items():
@@ -113,7 +120,20 @@ class MID():
                     else:
                         self.schedule_resampler.update_with_local_losses(t_idx, losses.detach())
                         train_loss = (losses * weights).mean()
-                    pbar.set_description(f"Epoch {epoch}, {node_type} MSE: {train_loss.item():.2f}")
+                    
+                    if self.config.save_losses_plots:
+                        with torch.no_grad():
+                            it_steps.append(i)
+                            log_loss.append(np.log(train_loss.item()))
+                            i += 1
+                            traj_pred = self.model.generate(batch, node_type, num_points=self.hyperparams['prediction_horizon'], sample=1,bestof=True)
+                            traj_pred = torch.FloatTensor(traj_pred[0])
+                            traj_pred[0] = torch.FloatTensor(traj_pred[0])
+                            fake_loss_res = fake_loss(traj_pred, batch[2])
+                            log_fake_loss.append(np.log(fake_loss_res.item()))
+                        pbar.set_description(f"Epoch {epoch}, {node_type} MSE: {train_loss.item():.2f} FAKE_LOSS: {fake_loss_res.item():.2f}")
+                    else:
+                        pbar.set_description(f"Epoch {epoch}, {node_type} MSE: {train_loss.item():.2f}")
                     train_loss.backward()
                     self.optimizer.step()
 
@@ -222,6 +242,25 @@ class MID():
 
                 self.model.train()
 
+        if self.config.save_losses_plots:
+            plot_filename = 'xy_'
+            if self.config.loss_type == 'hybrid':
+                plot_filename += 'hybrid'
+            elif self.config.loss_type == 'vlb':
+                if self.config.ensemble_loss:
+                    plot_filename += 'ensemble'
+                else:
+                    if self.config.reduce_grad_noise:
+                        plot_filename += 'vlb_is'
+                    else:
+                        plot_filename += 'vlb_normal'
+
+            df = pd.DataFrame()
+            df['iterations'] = it_steps
+            df['log_loss'] = log_loss
+            df['log_fake_loss'] = log_fake_loss
+
+            df.to_csv('docs/plot_losses/'+plot_filename+'.csv', index=False)
 
     def eval(self):
         torch.cuda.empty_cache()
