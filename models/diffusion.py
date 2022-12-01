@@ -185,7 +185,16 @@ class DiffusionTraj(Module):
     DiffusionTraj class, used as diffusion model for trajectories (crucial part of the project).
     This contains in turn the net (in this case TransformerConcatLinear) and the variance schedule.
     """
-    def __init__(self, net, var_sched:VarianceSchedule, learn_sigmas=False, learned_range=False, lambda_vlb=1e-4, loss_type='hybrid'):
+    def __init__(self,
+                 net,
+                 var_sched:VarianceSchedule,
+                 learn_sigmas=False,
+                 learned_range=False,
+                 lambda_vlb=1e-4,
+                 loss_type='hybrid',
+                 ensemble_loss=False,
+                 ensemble_hybrid_steps=10
+                 ):
         super().__init__()
         self.net = net
         self.var_sched = var_sched
@@ -193,6 +202,8 @@ class DiffusionTraj(Module):
         self.learned_range = learned_range
         self.lambda_vlb = lambda_vlb
         self.loss_type = loss_type
+        self.ensemble_loss = ensemble_loss
+        self.ehs = ensemble_hybrid_steps
 
     def get_loss(self, x_0, context, t=None):
         
@@ -213,61 +224,17 @@ class DiffusionTraj(Module):
         out = self.net(c0 * x_0 + c1 * e_rand, beta=beta, context=context)
 
         if self.loss_type == 'hybrid':
-            """
-            If loss type is hybrid, it's obvious that we are also learning sigmas. Therefore, the following happens:
-            1. e_theta and variance nodes are computed by splitting the output
-            2. sigmas are computed in the following way:
-                2.1 If we are learning within the range, get_log_sigmas_learning is used to compute final sigmas
-                2.2 If we leave the model to train without the range, the raw output is used as sigmas
-            3. L_simple is computed as usually
-            4. L_vlb is computed by detaching the mean
-            5. Final loss is L_simple + lambda * L_vlb
-            """
-            e_theta, variance_v = out.split(2, dim=2)
-            sigmas = variance_v if not self.learned_range \
-                else self.var_sched.get_log_sigmas_learning(variance_v.detach(), t)
-            sigmas = torch.exp(sigmas)
+            loss = self._loss_hybrid(x_0, out, t, c0, c1, e_rand, context)
             
-            loss_simple = mean_flat((e_theta - e_rand) ** 2)
-            
-            loss_vlb = self.loss_vlb(
-                mean=e_theta.detach(),
-                sigma=sigmas,
-                x_start=x_0,
-                x_t=c0*x_0+c1*e_rand,
-                t=t,
-                pmc1=self.var_sched.posterior_mean_coef1,
-                pmc2=self.var_sched.posterior_mean_coef2,
-                plvc=self.var_sched.posterior_log_variance_clipped
-            )
-            loss = loss_simple + self.lambda_vlb*loss_vlb
         elif self.loss_type == 'vlb':
-            """
-            If the loss type is hybrid, we avoid computing L_simple since it's not needed. Also in this case
-            we are obviously learning sigmas.
-            """
-            e_theta, variance_v = out.split(2, dim=2)
-            sigmas = variance_v if not self.learned_range \
-                else self.var_sched.get_log_sigmas_learning(variance_v.detach(), t)
-            sigmas = torch.exp(sigmas)
-            
-            loss_vlb = self.loss_vlb(
-                mean=e_theta,
-                sigma=sigmas,
-                x_start=x_0,
-                x_t=c0*x_0+c1*e_rand,
-                t=t,
-                pmc1=self.var_sched.posterior_mean_coef1,
-                pmc2=self.var_sched.posterior_mean_coef2,
-                plvc=self.var_sched.posterior_log_variance_clipped
-            )
-            loss = loss_vlb
+            if self.ensemble_loss:
+                loss = self._loss_ensemble(x_0, out, t, c0, c1, e_rand, context)
+            else:
+                loss = self._loss_vlb(x_0, out, t, c0, c1, e_rand, context)
+                
         elif self.loss_type == 'simple':
-            """
-            If the loss type is simple, we just compute L_simple in the usual way. 
-            Obviously, in this case e_theta is the entire output from the network.
-            """
-            loss = mean_flat((out - e_rand) ** 2)
+            loss = self._loss_simple(out, e_rand)
+            
         else:
             raise NotImplementedError('Loss type not implemented')
 
@@ -328,21 +295,115 @@ class DiffusionTraj(Module):
     """
     Functions used to compute the vlb loss for learning variances
     """
-    def loss_vlb(self, mean, sigma, x_start, x_t, t, pmc1, pmc2, plvc):
+    def _loss_vlb(self, x_0, out, t, c0, c1, e_rand, context):
         """
         Learn variances using the variational bound but without letting it affect the mean
         """
+        x_t = c0 * x_0 + c1 * e_rand
+        
+        e_theta, variance_v = out.split(2, dim=2)
+        sigmas = variance_v if not self.learned_range \
+            else self.var_sched.get_log_sigmas_learning(variance_v.detach(), t)
+        sigmas = torch.exp(sigmas)
+        
         loss = _vb_terms_bpd(
-            mean=mean,
-            sigma=sigma,
-            x_start=x_start,
+            mean=e_theta,
+            sigma=sigmas,
+            x_start=x_0,
             x_t=x_t,
             t=t,
-            pmc1=pmc1,
-            pmc2=pmc2,
-            plvc=plvc
+            pmc1=self.var_sched.posterior_mean_coef1,
+            pmc2=self.var_sched.posterior_mean_coef2,
+            plvc=self.var_sched.posterior_log_variance_clipped
             )
         return loss
+    
+    def _loss_hybrid(self, x_0, out, t, c0, c1, e_rand, context):
+        """
+        If loss type is hybrid, it's obvious that we are also learning sigmas. Therefore, the following happens:
+        1. e_theta and variance nodes are computed by splitting the output
+        2. sigmas are computed in the following way:
+            2.1 If we are learning within the range, get_log_sigmas_learning is used to compute final sigmas
+            2.2 If we leave the model to train without the range, the raw output is used as sigmas
+        3. L_simple is computed as usually
+        4. L_vlb is computed by detaching the mean
+        5. Final loss is L_simple + lambda * L_vlb
+        """
+        e_theta, variance_v = out.split(2, dim=2)
+        sigmas = variance_v if not self.learned_range \
+            else self.var_sched.get_log_sigmas_learning(variance_v.detach(), t)
+        sigmas = torch.exp(sigmas)
+        
+        loss_simple = mean_flat((e_theta - e_rand) ** 2)
+        
+        loss_vlb = _vb_terms_bpd(
+            mean=e_theta.detach(),
+            sigma=sigmas,
+            x_start=x_0,
+            x_t=c0*x_0+c1*e_rand,
+            t=t,
+            pmc1=self.var_sched.posterior_mean_coef1,
+            pmc2=self.var_sched.posterior_mean_coef2,
+            plvc=self.var_sched.posterior_log_variance_clipped
+        )
+        loss = loss_simple + self.lambda_vlb*loss_vlb
+        
+        return loss
+    
+    def _loss_simple(self, out, e_rand):
+        """
+        If loss type is simple, we just compute L_simple in the usual way. 
+        Obviously, in this case e_theta is the entire output from the network.
+        """
+        loss = mean_flat((out - e_rand) ** 2)
+        return loss
+    
+    def _loss_ensemble(self, x_0, out, t, c0, c1, e_rand, context):
+        # like loss_hybrid but L_vlb for the entries where t<self.ehs and t>self.var_sched.steps - self.ehs
+        # and hybrid elsewhere
+        tt = torch.tensor(t)
+        mask = torch.where((tt < self.ehs) | (tt > self.var_sched.num_steps-self.ehs), torch.tensor(1), torch.tensor(0))
+        mask_for_vlb = torch.argwhere(mask == 1).flatten()
+        mask_for_hybrid = torch.argwhere(mask == 0).flatten()
+        
+        e_theta, variance_v = out.split(2, dim=2)
+        sigmas = variance_v if not self.learned_range \
+            else self.var_sched.get_log_sigmas_learning(variance_v.detach(), t)
+        sigmas = torch.exp(sigmas)
+
+        # Compute vlb        
+        loss_vlb = _vb_terms_bpd(
+            mean=e_theta[mask_for_vlb],
+            sigma=sigmas[mask_for_vlb],
+            x_start=x_0[mask_for_vlb],
+            x_t=c0[mask_for_vlb] * x_0[mask_for_vlb] + c1[mask_for_vlb] * e_rand[mask_for_vlb],
+            t=tt[mask_for_vlb].tolist(),
+            pmc1=self.var_sched.posterior_mean_coef1, # not sure about this, TODO check
+            pmc2=self.var_sched.posterior_mean_coef2,
+            plvc=self.var_sched.posterior_log_variance_clipped
+            )
+        
+        # compute hybrid
+        loss_simple = mean_flat((e_theta[mask_for_hybrid] - e_rand[mask_for_hybrid]) ** 2)
+        loss_vlb_hybrid = _vb_terms_bpd(
+            mean=e_theta[mask_for_hybrid].detach(),
+            sigma=sigmas[mask_for_hybrid],
+            x_start=x_0[mask_for_hybrid],
+            x_t=c0[mask_for_hybrid]*x_0[mask_for_hybrid]+c1[mask_for_hybrid]*e_rand[mask_for_hybrid],
+            t=tt[mask_for_hybrid].tolist(),
+            pmc1=self.var_sched.posterior_mean_coef1,
+            pmc2=self.var_sched.posterior_mean_coef2,
+            plvc=self.var_sched.posterior_log_variance_clipped
+        )
+        loss_hybrid = loss_simple + self.lambda_vlb*loss_vlb_hybrid
+        
+        final_loss = torch.empty(out.shape[0]).to(loss_vlb.device)
+        for i, x in enumerate(mask_for_vlb):
+            final_loss[x] = loss_vlb[i]
+        for i, x in enumerate(mask_for_hybrid):
+            final_loss[x] = loss_hybrid[i]
+        
+        return final_loss
 
 """
 NOISE SCHEDULE FUNCTIONS
@@ -431,7 +492,6 @@ class TransformerLinear(Module):
         self.linear = nn.Linear(128, point_dim)
 
     def forward(self, x, beta, context):
-        print('helo')
         batch_size = x.size(0)
         beta = beta.view(batch_size, 1, 1)          # (B, 1, 1)
         context = context.view(batch_size, 1, -1)   # (B, 1, F)

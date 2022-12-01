@@ -172,6 +172,7 @@ plots/*.png
 docs/*
 !docs/.gitkeep
 !docs/old_slurm
+!docs/plot_losses
 wandb/
 images/
 !images/.gitkeep
