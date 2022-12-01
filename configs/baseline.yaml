@@ -14,15 +14,15 @@ batch_size: 256
 eval_batch_size: 256
 k_eval: 25
 seed: 123
-eval_every: 2
+eval_every: 1
 
 # Testing
-eval_at: 2
-eval_mode: False
+eval_at: 1
+eval_mode: True
 
 # Visualization
-save_losses_plots: True # Used for visualization purposes only (very slow since it computes also the fake MSE loss)
-use_wandb: False
+save_losses_plots: False # Used for visualization purposes only (very slow since it computes also the fake MSE loss)
+use_wandb: True
 
 # SDD longterm prediction
 sdd_longterm: False

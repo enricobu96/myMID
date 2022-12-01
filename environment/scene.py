@@ -33,8 +33,22 @@ class Scene(object):
         get_node_by_id(id): Node : returns node by id
 
     """
-    def __init__(self, timesteps, map=None, dt=1, name="", frequency_multiplier=1, aug_func=None,  non_aug_scene=None, mean_x=None, mean_y=None):
+    def __init__(self,
+                timesteps,
+                map=None,
+                semantic_map_gt=None,
+                semantic_map_pred=None,
+                dt=1,
+                name="",
+                frequency_multiplier=1,
+                aug_func=None,
+                non_aug_scene=None,
+                mean_x=None,
+                mean_y=None
+                ):
         self.map = map
+        self.semantic_map_gt = semantic_map_gt
+        self.semantic_map_pred = semantic_map_pred
         self.timesteps = timesteps
         self.dt = dt
         self.name = name
@@ -233,4 +247,6 @@ class Scene(object):
     def __repr__(self):
         return f"Scene: Duration: {self.duration()}s," \
                f" Nodes: {len(self.nodes)}," \
-               f" Map: {'Yes' if self.map is not None else 'No'}."
+               f" Map: {'Yes' if self.map is not None else 'No'}," \
+               f" Homography: {'Yes' if self.map.homography is not None else 'No'}," \
+               f" Semantic Map: {'Yes' if self.semantic_map_gt is not None else 'No'}."

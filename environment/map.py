@@ -1,22 +1,40 @@
 import torch
 import numpy as np
 from dataset.homography_warper import get_rotation_matrix2d, warp_affine_crop
+from PIL import Image
 
 class Map(object):
     def __init__(self, data, homography=None, description=None):
-        # Contains the path to the image
-        self.data = data
-        self.homography = homography
+        self.data = data # Contains the path to the image
+        self.homography = homography # Contains the path to the homography matrix
         self.description = description
 
     def as_image(self):
-        return str(self.data)
+        homography_matrix = self._load_H_matix()
+        image = Image.open(self.data)
+        data = np.asarray(image)
+        return data
 
     def get_cropped_maps(self, world_pts, patch_size, rotation=None, device='cpu'):
         raise NotImplementedError
 
     def to_map_points(self, scene_pts):
         raise NotImplementedError
+
+    def _load_H_matix(self):
+        return np.loadtxt(self.homography)
+
+class SemanticMap(object):
+    def __init__(self, data, homography=None, description=None):
+        self.data = data
+        self.homography = homography
+        self.description = description
+    
+    def as_image(self):
+        homography_matrix = self._load_H_matix()
+        image = Image.open(self.data)
+        data = np.asarray(image)
+        return data
 
 class GeometricMap(Map):
     """
@@ -179,6 +197,6 @@ class GeometricMap(Map):
         return map_points
 
 
-class ImageMap(Map):  # TODO Implement for image maps -> watch flipped coordinate system
+class ImageMap(Map):
     def __init__(self):
         raise NotImplementedError

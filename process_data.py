@@ -13,7 +13,7 @@ import dill
 import pickle
 
 from environment import Environment, Scene, Node, derivative_of
-from environment.map import Map
+from environment.map import Map, SemanticMap
 
 # For debug reasons
 from pprint import pprint
@@ -171,8 +171,29 @@ for desired_source in ['eth', 'hotel', 'univ', 'zara1', 'zara2']:
 
                     max_timesteps = data['frame_id'].max()
 
-                    # Creates the scene
-                    scene = Scene(timesteps=max_timesteps+1, dt=dt, name=desired_source + "_" + data_class, aug_func=augment if data_class == 'train' else None)
+                    map_path = 'raw_data/' + desired_source + '/maps/reference.jpg'
+                    homography_path = 'raw_data/' + desired_source + '/maps/H.txt'
+                    semantic_map_gt_path = 'raw_data/' + desired_source + '/maps/mask.png'
+                    semantic_map_pred_path = 'raw_data/' + desired_source + '/maps/pred_mask.png'
+
+                    scene = Scene(
+                        timesteps=max_timesteps+1,
+                        map=Map(
+                            data=map_path,
+                            homography=homography_path
+                        ),
+                        semantic_map_gt=SemanticMap(
+                            data=semantic_map_gt_path,
+                            homography=homography_path
+                        ),
+                        semantic_map_pred=SemanticMap(
+                            data=semantic_map_pred_path,
+                            homography=homography_path
+                        ),
+                        dt=dt,
+                        name=desired_source + "_" + data_class,
+                        aug_func=augment if data_class == 'train' else None
+                    )
 
                     # For each node
                     for node_id in pd.unique(data['node_id']):
@@ -271,7 +292,29 @@ for data_class in ["train", "test"]:
 
         if len(data) > 0:
             map_path = raw_path + '/maps/' + data_class + '/' + scene_id + '/reference.jpg'
-            scene = Scene(timesteps=max_timesteps+1, map=Map(map_path), dt=dt, name="sdd_" + data_class, aug_func=augment if data_class == 'train' else None, mean_x=mean_x, mean_y=mean_y)
+            homography_path = raw_path + '/maps/' + data_class + '/' + scene_id + '/H.txt'
+            semantic_map_gt_path = raw_path + '/maps/' + data_class + '/' + scene_id + '/mask.png'
+            semantic_map_pred_path = raw_path + '/maps/' + data_class + '/' + scene_id + '/pred_mask.png'
+            scene = Scene(
+                timesteps=max_timesteps+1,
+                map=Map(
+                    data = map_path,
+                    homography = homography_path
+                ),
+                semantic_map_gt=SemanticMap(
+                    data = semantic_map_gt_path,
+                    homography = homography_path
+                ),
+                semantic_map_pred=SemanticMap(
+                    data = semantic_map_pred_path,
+                    homography = homography_path
+                ),
+                dt=dt,
+                name="sdd_" + data_class,
+                aug_func=augment if data_class == 'train' else None,
+                mean_x=mean_x,
+                mean_y=mean_y
+            )
             n=0
             for node_id in pd.unique(data['node_id']):
 

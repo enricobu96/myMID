@@ -94,7 +94,7 @@ def visualize_prediction(i, j, fig, ax,
     futures_dict = futures_dict[ts_key]
 
     if map is not None:
-        ax.imshow(mpimg.imread(map.as_image()), origin='lower', alpha=0.5)
+        ax.imshow(map.as_image(), origin='lower', alpha=0.5)
     plot_trajectories(i, j, fig, ax, prediction_dict, histories_dict, futures_dict, *kwargs)
 
 """
@@ -117,7 +117,7 @@ def plot_wandb(fig, ax, prediction_output_dict, dt, max_hl, ph, map=None, batch_
 
     # If the map is present plot it
     if map is not None:
-        ax.imshow(mpimg.imread(map.as_image()), alpha=0.7)
+        ax.imshow(map.as_image(), alpha=0.7)
 
     fig, ax = plot_trajectories_wandb(fig, ax, prediction_dict, histories_dict, futures_dict, mean_x=mean_x, mean_y=mean_y)
 
