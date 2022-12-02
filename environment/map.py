@@ -2,18 +2,41 @@ import torch
 import numpy as np
 from dataset.homography_warper import get_rotation_matrix2d, warp_affine_crop
 from PIL import Image
+import cv2
+from collections import OrderedDict
 
 class Map(object):
-    def __init__(self, data, homography=None, description=None):
-        self.data = data # Contains the path to the image
-        self.homography = homography # Contains the path to the homography matrix
+    def __init__(self, data, homography=None, description=None, scene=None):
+        self.data = np.asarray(Image.open(data))
+        self.homography = np.loadtxt(homography)
+        self.homography_inv = np.linalg.inv(self.homography)
         self.description = description
+        self.scene = scene
 
     def as_image(self):
-        homography_matrix = self._load_H_matix()
-        image = Image.open(self.data)
-        data = np.asarray(image)
-        return data
+        return self.data
+    
+    def translate_trajectories(self, trajectories):
+        trajs = trajectories.copy()
+        if self.scene == 'sdd':
+            return trajs
+        elif self.scene in ['eth', 'hotel']:
+            trajs = self._world_to_pixel(trajs, self.homography_inv)
+            trajs = np.flip(trajs, axis=1)
+            return trajs
+        elif self.scene in ['univ', 'zara1', 'zara2']:
+            return self._world_to_pixel(trajs, self.homography_inv)
+        else:
+            print('Unknown scene')
+            return None
+
+    def _world_to_pixel(self, world_pts, homography):
+        world_pts = np.concatenate(
+            (world_pts, np.ones((len(world_pts), 1))), axis=1)
+        pixel_coord = np.dot(homography, world_pts.T).T
+        pixel_coord = pixel_coord[:, 0:2] / pixel_coord[:, 2][:, np.newaxis]
+        pixel_coord = pixel_coord
+        return pixel_coord
 
     def get_cropped_maps(self, world_pts, patch_size, rotation=None, device='cpu'):
         raise NotImplementedError
@@ -21,20 +44,29 @@ class Map(object):
     def to_map_points(self, scene_pts):
         raise NotImplementedError
 
-    def _load_H_matix(self):
-        return np.loadtxt(self.homography)
-
 class SemanticMap(object):
-    def __init__(self, data, homography=None, description=None):
-        self.data = data
-        self.homography = homography
+    def __init__(self, data, homography=None, description=None, scene=None):
+
+        self.semantic_classes = OrderedDict([
+            ('unlabeled', 'gray'),
+            ('pavement', 'blue'),
+            ('road', 'red'),
+            ('structure', 'orange'),
+            ('terrain', 'cyan'),
+            ('tree', 'green'),
+        ])
+        sem_map = cv2.imread(data, flags=0)
+        num_classes = len(self.semantic_classes)
+        sem_map = [(sem_map == v) for v in range(num_classes)]
+        sem_map = np.stack(sem_map, axis=-1).astype(int)
+        self.data = sem_map
+        self.homography = np.loadtxt(homography)
+        self.homography_inv = np.linalg.inv(self.homography)
         self.description = description
+        self.scene = scene
     
     def as_image(self):
-        homography_matrix = self._load_H_matix()
-        image = Image.open(self.data)
-        data = np.asarray(image)
-        return data
+        return self.data
 
 class GeometricMap(Map):
     """
@@ -195,7 +227,6 @@ class GeometricMap(Map):
         if org_shape is not None:
             map_points = map_points.reshape(org_shape)
         return map_points
-
 
 class ImageMap(Map):
     def __init__(self):

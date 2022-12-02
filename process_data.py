@@ -159,6 +159,8 @@ for desired_source in ['eth', 'hotel', 'univ', 'zara1', 'zara2']:
                         data['pos_x'] = data['pos_x'] * 0.6
                         data['pos_y'] = data['pos_y'] * 0.6
 
+                    mean_x = data['pos_x'].mean()
+                    mean_y = data['pos_y'].mean()
                     # if data_class == "train":
                     #     #data_gauss = data.copy(deep=True)
                     #     data['pos_x'] = data['pos_x'] + 2 * np.random.normal(0,1)
@@ -180,19 +182,24 @@ for desired_source in ['eth', 'hotel', 'univ', 'zara1', 'zara2']:
                         timesteps=max_timesteps+1,
                         map=Map(
                             data=map_path,
-                            homography=homography_path
+                            homography=homography_path,
+                            scene=desired_source
                         ),
                         semantic_map_gt=SemanticMap(
                             data=semantic_map_gt_path,
-                            homography=homography_path
+                            homography=homography_path,
+                            scene=desired_source
                         ),
                         semantic_map_pred=SemanticMap(
                             data=semantic_map_pred_path,
-                            homography=homography_path
+                            homography=homography_path,
+                            scene=desired_source
                         ),
                         dt=dt,
                         name=desired_source + "_" + data_class,
-                        aug_func=augment if data_class == 'train' else None
+                        aug_func=augment if data_class == 'train' else None,
+                        mean_x=mean_x,
+                        mean_y=mean_y
                     )
 
                     # For each node
@@ -299,15 +306,18 @@ for data_class in ["train", "test"]:
                 timesteps=max_timesteps+1,
                 map=Map(
                     data = map_path,
-                    homography = homography_path
+                    homography = homography_path,
+                    scene = 'sdd'
                 ),
                 semantic_map_gt=SemanticMap(
                     data = semantic_map_gt_path,
-                    homography = homography_path
+                    homography = homography_path,
+                    scene = 'sdd'
                 ),
                 semantic_map_pred=SemanticMap(
                     data = semantic_map_pred_path,
-                    homography = homography_path
+                    homography = homography_path,
+                    scene = 'sdd'
                 ),
                 dt=dt,
                 name="sdd_" + data_class,

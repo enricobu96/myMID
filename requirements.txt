@@ -11,3 +11,7 @@ tqdm
 seaborn
 wandb
 Pillow
+albumentations
+nbstripout
+segmentation-models-pytorch
+gitpython

@@ -336,7 +336,7 @@ class MID():
                         except OSError:
                             if not os.path.isdir('images'):
                                 raise
-                        plt.savefig('images/'+self.config["dataset"]+'_test_traj_epoch'+str(epoch)+'_scene'+str(sc)+'_it'+str(j)+'.png')
+                        plt.savefig('images/'+self.config["dataset"]+'_test_traj_epoch'+str(epoch)+'_scene'+str(sc)+'_it'+str(j)+'.png', bbox_inches='tight')
                         wandb.log({"train/test_image": wandb.Image(fig), "scene": str(sc)}, step=epoch)
                         sc += 1
                         plt.close()
