@@ -23,8 +23,10 @@ from utils.trajectron_hypers import get_traj_hypers
 import evaluation
 
 import wandb
+from evaluation.evaluation import compute_kde_nll
 from evaluation.trajectory_utils import prediction_output_to_trajectories
 from evaluation.visualization.visualization import plot_wandb
+from scipy.stats import gaussian_kde
 
 from utils.resample import UniformSampler, LossSecondMomentResampler
 
@@ -101,6 +103,7 @@ class MID():
             i = 0
             log_loss = []
             log_fake_loss = []
+            kde_lls = []
             fake_loss = nn.MSELoss(reduction='mean')
         for epoch in range(1, self.config.epochs + 1):
             self.train_dataset.augment = self.config.augment
@@ -126,12 +129,33 @@ class MID():
                             it_steps.append(i)
                             log_loss.append(np.log(train_loss.item()))
                             i += 1
-                            traj_pred = self.model.generate(batch, node_type, num_points=self.hyperparams['prediction_horizon'], sample=1,bestof=True)
+                            traj_pred = self.model.generate(batch, node_type, num_points=self.hyperparams['prediction_horizon'], sample=1,bestof=False)
+                            # Compute KDE
+                            num_batches = traj_pred[0].shape[0]
+                            num_timesteps = traj_pred[0].shape[1]
+                            kde_ll = 0.
+                            log_pdf_lower_bound = -20
+
+
+                            for batch_num in range(num_batches):
+                                for t in range(num_timesteps):
+                                    try:
+                                        kde = gaussian_kde(traj_pred[0][batch_num, t, :].T)
+                                        pdf = np.clip(kde.logpdf(batch[2][batch_num, t, :].cpu().numpy().T), log_pdf_lower_bound, np.inf)[0]
+                                        kde_ll += pdf / (num_batches * num_timesteps)
+                                    except np.linalg.LinAlgError:
+                                        kde_ll = np.nan
+                                    except ValueError:
+                                        kde_ll = np.nan
+
+                            kde_ll = -kde_ll
+                            # Compute fake loss
                             traj_pred = torch.FloatTensor(traj_pred[0])
                             traj_pred[0] = torch.FloatTensor(traj_pred[0])
                             fake_loss_res = fake_loss(traj_pred, batch[2])
                             log_fake_loss.append(np.log(fake_loss_res.item()))
-                        pbar.set_description(f"Epoch {epoch}, {node_type} MSE: {train_loss.item():.2f} FAKE_LOSS: {fake_loss_res.item():.2f}")
+                            kde_lls.append(kde_ll)
+                        pbar.set_description(f"Epoch {epoch}, {node_type} MSE: {train_loss.item():.2f} FAKE_LOSS: {fake_loss_res.item():.2f} KDE: {kde_ll:.2f}")
                     else:
                         pbar.set_description(f"Epoch {epoch}, {node_type} MSE: {train_loss.item():.2f}")
                     train_loss.backward()
@@ -170,7 +194,6 @@ class MID():
                         nodes = batch[1]
                         timesteps_o = batch[2]
                         traj_pred = self.model.generate(test_batch, node_type, num_points=ph, sample=20,bestof=True) # B * 20 * 12 * 2
-
                         predictions = traj_pred
                         predictions_dict = {}
                         for i, ts in enumerate(timesteps_o):
@@ -259,6 +282,7 @@ class MID():
             df['iterations'] = it_steps
             df['log_loss'] = log_loss
             df['log_fake_loss'] = log_fake_loss
+            df['kde_ll'] = kde_lls
 
             df.to_csv('docs/plot_losses/'+plot_filename+'.csv', index=False)
 
@@ -300,7 +324,8 @@ class MID():
                     nodes = batch[1]
                     timesteps_o = batch[2]
                     traj_pred = self.model.generate(test_batch, node_type, num_points=ph, sample=20,bestof=True) # B * 20 * 12 * 2
-
+                    print(traj_pred.shape, traj_pred)
+                    exit()
                     predictions = traj_pred
                     predictions_dict = {}
                     for i, ts in enumerate(timesteps_o):
