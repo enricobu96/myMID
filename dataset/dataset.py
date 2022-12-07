@@ -81,3 +81,7 @@ class NodeTypeDataset(data.Dataset):
 
         return get_node_timestep_data(self.env, scene, t, node, self.state, self.pred_state,
                                       self.edge_types, self.max_ht, self.max_ft, self.hyperparams)
+    
+    def get_scene(self, i):
+        (scene, _, _) = self.index[i]
+        return scene

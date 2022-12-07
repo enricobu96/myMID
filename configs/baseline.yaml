@@ -18,11 +18,11 @@ eval_every: 1
 
 # Testing
 eval_at: 1
-eval_mode: True
+eval_mode: False
 
 # Visualization
 save_losses_plots: False # Used for visualization purposes only (very slow since it computes also the fake MSE loss)
-use_wandb: True
+use_wandb: False
 
 # SDD longterm prediction
 sdd_longterm: False

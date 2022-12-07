@@ -85,6 +85,13 @@ class MID():
         torch.backends.cudnn.benchmark = True
         self._build()
 
+    def _get_scenes(self, data_loader, batch_acc, batch_size):
+        scenes = []
+        for i in range(batch_size):
+            scene = data_loader.dataset.get_scene(batch_acc+i)
+            scenes.append(scene)
+        return scenes
+
     def train(self):
         """
         Method for model training
@@ -109,6 +116,7 @@ class MID():
             self.train_dataset.augment = self.config.augment
             for node_type, data_loader in self.train_data_loader.items():
                 pbar = tqdm(data_loader, ncols=80)
+                batch_acc = 0
                 for batch in pbar:
                     # Resampling stuff
                     t_idx, weights = self.schedule_resampler.sample(
@@ -116,7 +124,9 @@ class MID():
                         device=self.config.device
                         )
                     self.optimizer.zero_grad()
-                    losses = self.model.get_loss(batch, node_type)
+                    scenes = self._get_scenes(data_loader, batch_acc, len(batch[0]))
+                    batch_acc += len(batch[0])
+                    losses = self.model.get_loss(batch, node_type, scenes)
                     
                     if not self.config.reduce_grad_noise:
                         train_loss = torch.mean(losses)
@@ -324,8 +334,6 @@ class MID():
                     nodes = batch[1]
                     timesteps_o = batch[2]
                     traj_pred = self.model.generate(test_batch, node_type, num_points=ph, sample=20,bestof=True) # B * 20 * 12 * 2
-                    print(traj_pred.shape, traj_pred)
-                    exit()
                     predictions = traj_pred
                     predictions_dict = {}
                     for i, ts in enumerate(timesteps_o):
@@ -548,7 +556,7 @@ class MID():
                                                          collate_fn=collate,
                                                          pin_memory = True,
                                                          batch_size=self.config.batch_size,
-                                                         shuffle=True,
+                                                         shuffle=False, #TODO: if performances are bad, shuffle and find a way to get the scenes in order
                                                          num_workers=self.config.preprocess_workers)
             self.train_data_loader[node_type_data_set.node_type] = node_type_dataloader
 

@@ -65,7 +65,7 @@ class AutoEncoder(Module):
         predicted_y_pos = dynamics.integrate_samples(predicted_y_vel)
         return predicted_y_pos.cpu().detach().numpy()
 
-    def get_loss(self, batch, node_type):
+    def get_loss(self, batch, node_type, scenes):
         (first_history_index,
          x_t, y_t, x_st_t, y_st_t,
          neighbors_data_st,
@@ -75,6 +75,6 @@ class AutoEncoder(Module):
 
         feat_x_encoded = self.encode(batch,node_type) # B * 64
 
-        loss = self.diffusion.get_loss(y_t.to(self.config.device), feat_x_encoded)
+        loss = self.diffusion.get_loss(y_t.to(self.config.device), feat_x_encoded, scenes)
         
         return loss
