@@ -117,6 +117,17 @@ data_folder_name = 'processed_data_noise'
 
 maybe_makedirs(data_folder_name)
 
+data_file_name_to_scene = {
+            "biwi_eth": 'eth',
+            "biwi_hotel": 'hotel',
+            "students001": 'univ',
+            "students003": 'univ',
+            "uni_examples": 'univ',
+            "crowds_zara01": 'zara1',
+            "crowds_zara02": 'zara2',
+            "crowds_zara03": 'zara2',
+            }
+
 """
 Process data for ETH-UCY dataset.
 """
@@ -134,7 +145,7 @@ for desired_source in ['eth', 'hotel', 'univ', 'zara1', 'zara2']:
 
         for subdir, dirs, files in os.walk(os.path.join('raw_data', desired_source, data_class)):
             for file in files:
-                if file.endswith('.txt'):
+                if file.endswith('.txt'):                    
                     # Reads input txt file and loads it into dataframe
                     input_data_dict = dict()
                     full_data_path = os.path.join(subdir, file)
@@ -173,10 +184,11 @@ for desired_source in ['eth', 'hotel', 'univ', 'zara1', 'zara2']:
 
                     max_timesteps = data['frame_id'].max()
 
-                    map_path = 'raw_data/' + desired_source + '/maps/reference.jpg'
-                    homography_path = 'raw_data/' + desired_source + '/maps/H.txt'
-                    semantic_map_gt_path = 'raw_data/' + desired_source + '/maps/mask.png'
-                    semantic_map_pred_path = 'raw_data/' + desired_source + '/maps/pred_mask.png'
+                    file_name = file.replace("_train", "").replace("_val", "").replace(".txt", "")
+                    map_path = 'raw_data/eth_scenes/' + data_file_name_to_scene[file_name] + '_reference.jpg'
+                    homography_path = 'raw_data/eth_scenes/' + data_file_name_to_scene[file_name] + '_H.txt'
+                    semantic_map_gt_path = 'raw_data/eth_scenes/' + data_file_name_to_scene[file_name] + '_mask.png'
+                    semantic_map_pred_path = 'raw_data/eth_scenes/' + data_file_name_to_scene[file_name] + '_pred_mask.png'
 
                     scene = Scene(
                         timesteps=max_timesteps+1,
