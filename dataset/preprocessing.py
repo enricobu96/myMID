@@ -166,39 +166,12 @@ def get_node_timestep_data(env, scene, t, node, state, pred_state,
         robot_traj = robot.get(timestep_range_r, state[robot_type], padding=0.0)
         robot_traj_st_t = get_relative_robot_traj(env, state, x_node, robot_traj, node.type, robot_type)
 
-    # Map
-    # map_tuple = None
-    # if hyperparams['use_map_encoding']:
-    #     if node.type in hyperparams['map_encoder']:
-    #         if node.non_aug_node is not None:
-    #             x = node.non_aug_node.get(np.array([t]), state[node.type])
-    #         me_hyp = hyperparams['map_encoder'][node.type]
-    #         if 'heading_state_index' in me_hyp:
-    #             heading_state_index = me_hyp['heading_state_index']
-    #             # We have to rotate the map in the opposit direction of the agent to match them
-    #             if type(heading_state_index) is list:  # infer from velocity or heading vector
-    #                 heading_angle = -np.arctan2(x[-1, heading_state_index[1]],
-    #                                             x[-1, heading_state_index[0]]) * 180 / np.pi
-    #             else:
-    #                 heading_angle = -x[-1, heading_state_index] * 180 / np.pi
-    #         else:
-    #             heading_angle = None
-
-    #         scene_map = scene.map[node.type]
-    #         map_point = x[-1, :2]
-
-
-    #         patch_size = hyperparams['map_encoder'][node.type]['patch_size']
-    #         map_tuple = (scene_map, map_point, heading_angle, patch_size)
-
-    map = {
-        # 'map': scene.map,
-        # 'semantic_gt': scene.semantic_map_gt,
+    maps = {
         'semantic_pred': scene.semantic_map_pred
-        }
+    }
 
     return (first_history_index, x_t, y_t, x_st_t, y_st_t, neighbors_data_st,
-            neighbors_edge_value, robot_traj_st_t, map)
+            neighbors_edge_value, robot_traj_st_t, maps)
 
 
 def get_timesteps_data(env, scene, t, node_type, state, pred_state,

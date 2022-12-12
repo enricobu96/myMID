@@ -26,6 +26,7 @@ state_dim = 6
 frame_diff = 10
 desired_frame_diff = 1
 dt = 0.4
+VISUALIZE = False # Put to true to have the maps into the scenes (slows down a lot training)
 
 standardization = {
     'PEDESTRIAN': {
@@ -240,9 +241,10 @@ for desired_source in ['eth', 'hotel', 'univ', 'zara1', 'zara2']:
                         for angle in angles:
                             scene.augmented.append(augment_scene(scene, angle))
 
-                    scene.map = Map(data=map_path, homography=homography_path, scene=desired_source)
-                    scene.semantic_map_gt = SemanticMap(data=semantic_map_gt_path, homography=homography_path, scene=desired_source)
-                    scene.semantic_map_pred = SemanticMap(data=semantic_map_pred_path, homography=homography_path, scene=desired_source)
+                    if VISUALIZE:
+                        scene.map = Map(data=map_path, homography=homography_path, scene=desired_source)
+                        scene.semantic_map_gt = SemanticMap(data=semantic_map_gt_path, scene=desired_source)
+                    scene.semantic_map_pred = SemanticMap(data=semantic_map_pred_path, scene=desired_source)
 
                     print(scene)
                     scenes.append(scene)
@@ -308,21 +310,9 @@ for data_class in ["train", "test"]:
             semantic_map_pred_path = raw_path + '/maps/' + data_class + '/' + scene_id + '/pred_mask.png'
             scene = Scene(
                 timesteps=max_timesteps+1,
-                map=Map(
-                    data = map_path,
-                    homography = homography_path,
-                    scene = 'sdd'
-                ),
-                semantic_map_gt=SemanticMap(
-                    data = semantic_map_gt_path,
-                    homography = homography_path,
-                    scene = 'sdd'
-                ),
-                semantic_map_pred=SemanticMap(
-                    data = semantic_map_pred_path,
-                    homography = homography_path,
-                    scene = 'sdd'
-                ),
+                map=None,
+                semantic_map_gt=None,
+                semantic_map_pred=None,
                 dt=dt,
                 name="sdd_" + data_class,
                 aug_func=augment if data_class == 'train' else None,
@@ -364,6 +354,11 @@ for data_class in ["train", "test"]:
                     node_data = pd.DataFrame(data_dict, columns=data_columns)
                     node = Node(node_type=env.NodeType.PEDESTRIAN, node_id=node_id, data=node_data)
                     node.first_timestep = new_first_idx
+
+                    if VISUALIZE:
+                        scene.map = Map(data = map_path, homography = homography_path, scene = 'sdd')
+                        scene.semantic_map_gt = SemanticMap(data = semantic_map_gt_path, scene = 'sdd')
+                    scene.semantic_map_pred = SemanticMap(data = semantic_map_pred_path, scene = 'sdd')
 
                     scene.nodes.append(node)
             if data_class == 'train':

@@ -85,13 +85,6 @@ class MID():
         torch.backends.cudnn.benchmark = True
         self._build()
 
-    # def _get_scenes(self, data_loader, batch_acc, batch_size):
-    #     scenes = []
-    #     for i in range(batch_size):
-    #         scene = data_loader.dataset.get_scene(batch_acc+i)
-    #         scenes.append(scene)
-    #     return scenes
-
     def train(self):
         """
         Method for model training
@@ -124,14 +117,6 @@ class MID():
                         device=self.config.device
                         )
                     self.optimizer.zero_grad()
-                    # scenes = self._get_scenes(data_loader, batch_acc, len(batch[0]))
-                    
-                    # for i in range(len(batch[0])):
-                    #     fig, ax = plt.subplots(figsize=(24, 12))
-                    #     ax.imshow(scenes[i].map.as_image(), alpha=0.7, origin='upper')
-                    #     fig.savefig('testimages/'+str(batch_acc%256)+'_'+str(i)+'.png')
-                    #     plt.close()
-
                     batch_acc += len(batch[0])
 
                     losses = self.model.get_loss(batch, node_type)
@@ -563,7 +548,7 @@ class MID():
                                                          collate_fn=collate,
                                                          pin_memory = True,
                                                          batch_size=self.config.batch_size,
-                                                         shuffle=True, #TODO: if performances are bad, shuffle and find a way to get the scenes in order
+                                                         shuffle=True,
                                                          num_workers=self.config.preprocess_workers)
             self.train_data_loader[node_type_data_set.node_type] = node_type_dataloader
 

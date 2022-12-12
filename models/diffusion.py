@@ -172,13 +172,13 @@ class TransformerConcatLinear(Module):
         # GOAL
         tensor_images = []
         obs_traj_maps = []
-        i = 0
-        for map in maps['semantic_pred']:
-            tensor_images.append(map.get_tensor_image())
-            #obs_traj_maps.append(scene.semantic_map_pred.get_input_traj_maps(history[i].unsqueeze(dim=0)))
-            i += 1
+
+        for i in range(len(maps['semantic_pred'])):
+            tensor_images.append(maps['semantic_pred'][i].get_tensor_image())
+            obs_traj_maps.append(maps['semantic_pred'][i].get_input_traj_maps(history[i].unsqueeze(dim=0)))
+
         tensor_images = torch.stack(tensor_images, dim=0)
-        #obs_traj_maps = torch.stack(obs_traj_maps, dim=0)
+        obs_traj_maps = torch.stack(obs_traj_maps, dim=0)
 
 
         time_emb = torch.cat([beta, torch.sin(beta), torch.cos(beta)], dim=-1)  # (B, 1, 3)

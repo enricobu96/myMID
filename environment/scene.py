@@ -248,5 +248,5 @@ class Scene(object):
         return f"Scene: Duration: {self.duration()}s," \
                f" Nodes: {len(self.nodes)}," \
                f" Map: {'Yes' if self.map is not None else 'No'}," \
-               f" Homography: {'Yes' if self.map.homography is not None else 'No'}," \
-               f" Semantic Map: {'Yes' if self.semantic_map_gt is not None else 'No'}."
+               f" Homography: {'Yes' if self.map and self.map.homography is not None else 'No'}," \
+               f" Semantic Map: {'Yes' if self.semantic_map_pred is not None else 'No'}."

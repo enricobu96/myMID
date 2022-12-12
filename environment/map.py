@@ -62,8 +62,7 @@ class SemanticMap(object):
         sem_map = [(sem_map == v) for v in range(num_classes)]
         sem_map = np.stack(sem_map, axis=-1).astype(int)
         self.data = sem_map
-        self.homography = np.loadtxt(homography)
-        self.homography_inv = np.linalg.inv(self.homography)
+        self.tensor_image = self._create_tensor_image()
         self.description = description
         self.scene = scene
     
@@ -71,7 +70,7 @@ class SemanticMap(object):
         return self.data
 
     def get_tensor_image(self, down_factor=1):
-        return self._create_tensor_image(down_factor=down_factor)
+        return self.tensor_image
 
     def get_input_traj_maps(self, abs_pixel_coord, down_factor=1):
         return self._create_CNN_inputs_loop(batch_abs_pixel_coords=torch.tensor(abs_pixel_coord).float() / down_factor)
@@ -87,7 +86,7 @@ class SemanticMap(object):
 
     def _create_CNN_inputs_loop(self, batch_abs_pixel_coords):
         num_agents = batch_abs_pixel_coords.shape[1]
-        C, H, W = self.get_tensor_image().shape
+        C, H, W = self.tensor_image.shape
         input_traj_maps = list()
 
         # loop over agents
