@@ -164,19 +164,21 @@ class TransformerConcatLinear(Module):
         self.concat4 = ConcatSquashLinear(context_dim,context_dim//2,context_dim+3)
         self.linear = ConcatSquashLinear(context_dim//2, 2 if not learn_sigmas else 4, context_dim+3)
 
-    def forward(self, x, beta, context, scenes):
+    def forward(self, x, beta, context, maps, history):
         batch_size = x.size(0)
         beta = beta.view(batch_size, 1, 1)          # (B, 1, 1)
         context = context.view(batch_size, 1, -1)   # (B, 1, F)
         
         # GOAL
         tensor_images = []
-        # obs_traj_maps = []
-        for scene in scenes:
-            tensor_images.append(scene.semantic_map_pred.get_tensor_image())
-            # obs_traj_maps.append(scene.get_input_traj_map()[:, 0:8]) # 8 is the observation length
+        obs_traj_maps = []
+        i = 0
+        for map in maps['semantic_pred']:
+            tensor_images.append(map.get_tensor_image())
+            #obs_traj_maps.append(scene.semantic_map_pred.get_input_traj_maps(history[i].unsqueeze(dim=0)))
+            i += 1
         tensor_images = torch.stack(tensor_images, dim=0)
-        # obs_traj_maps = torch.stack(obs_traj_maps, dim=0)
+        #obs_traj_maps = torch.stack(obs_traj_maps, dim=0)
 
 
         time_emb = torch.cat([beta, torch.sin(beta), torch.cos(beta)], dim=-1)  # (B, 1, 3)
@@ -215,7 +217,7 @@ class DiffusionTraj(Module):
         self.ensemble_loss = ensemble_loss
         self.ehs = ensemble_hybrid_steps
 
-    def get_loss(self, x_0, context, scenes=None, t=None):
+    def get_loss(self, x_0, context, maps=None, history=None, t=None):
         
         """
         Push the input in the model and get model output. The latter is then treated in a different
@@ -231,7 +233,7 @@ class DiffusionTraj(Module):
         c1 = torch.sqrt(1 - alpha_bar).view(-1, 1, 1).to(x_0.device)   # (B, 1, 1)
         e_rand = torch.randn_like(x_0).to(x_0.device)  # (B, N, d)
 
-        out = self.net(c0 * x_0 + c1 * e_rand, beta=beta, context=context, scenes=scenes)
+        out = self.net(c0 * x_0 + c1 * e_rand, beta=beta, context=context, maps=maps, history=history)
 
         if self.loss_type == 'hybrid':
             loss = self._loss_hybrid(x_0, out, t, c0, c1, e_rand, context)

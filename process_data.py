@@ -192,21 +192,9 @@ for desired_source in ['eth', 'hotel', 'univ', 'zara1', 'zara2']:
 
                     scene = Scene(
                         timesteps=max_timesteps+1,
-                        map=Map(
-                            data=map_path,
-                            homography=homography_path,
-                            scene=desired_source
-                        ),
-                        semantic_map_gt=SemanticMap(
-                            data=semantic_map_gt_path,
-                            homography=homography_path,
-                            scene=desired_source
-                        ),
-                        semantic_map_pred=SemanticMap(
-                            data=semantic_map_pred_path,
-                            homography=homography_path,
-                            scene=desired_source
-                        ),
+                        map=None,
+                        semantic_map_gt=None,
+                        semantic_map_pred=None,
                         dt=dt,
                         name=desired_source + "_" + data_class,
                         aug_func=augment if data_class == 'train' else None,
@@ -251,6 +239,10 @@ for desired_source in ['eth', 'hotel', 'univ', 'zara1', 'zara2']:
                         angles = np.arange(0, 360, 15) if data_class == 'train' else [0]
                         for angle in angles:
                             scene.augmented.append(augment_scene(scene, angle))
+
+                    scene.map = Map(data=map_path, homography=homography_path, scene=desired_source)
+                    scene.semantic_map_gt = SemanticMap(data=semantic_map_gt_path, homography=homography_path, scene=desired_source)
+                    scene.semantic_map_pred = SemanticMap(data=semantic_map_pred_path, homography=homography_path, scene=desired_source)
 
                     print(scene)
                     scenes.append(scene)

@@ -87,15 +87,14 @@ class SemanticMap(object):
 
     def _create_CNN_inputs_loop(self, batch_abs_pixel_coords):
         num_agents = batch_abs_pixel_coords.shape[1]
-        C, H, W = self.tensor_image.shape
+        C, H, W = self.get_tensor_image().shape
         input_traj_maps = list()
 
         # loop over agents
         for agent_idx in range(num_agents):
-            trajectory = batch_abs_pixel_coords[:, agent_idx, :].detach()\
-                .clone().to(torch.device("cpu"))
+            trajectory = batch_abs_pixel_coords[:, agent_idx, :]
 
-            traj_map_cnn = self.make_gaussian_map_patches(
+            traj_map_cnn = self._make_gaussian_map_patches(
                 gaussian_centers=trajectory,
                 height=H,
                 width=W)
