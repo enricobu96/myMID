@@ -58,7 +58,6 @@ class AutoEncoder(Module):
         return z
 
     def generate(self, batch, node_type, num_points, sample, bestof,flexibility=0.0, ret_traj=False):
-
         dynamics = self.encoder.node_models_dict[node_type].dynamic
         encoded_x = self.encoder.get_latent(batch, node_type)
         predicted_y_vel =  self.diffusion.sample(num_points, encoded_x,sample,bestof, flexibility=flexibility, ret_traj=ret_traj)
@@ -71,12 +70,11 @@ class AutoEncoder(Module):
          neighbors_data_st,
          neighbors_edge_value,
          robot_traj_st_t,
-         map) = batch
+         goal) = batch
 
         feat_x_encoded = self.encode(batch,node_type) # B * 64
 
-        history = x_t[:, :, :2] # B * 8 * 2
 
-        loss = self.diffusion.get_loss(y_t.to(self.config.device), feat_x_encoded, map, history)
+        loss = self.diffusion.get_loss(y_t.to(self.config.device), feat_x_encoded, goal=goal)
         
         return loss

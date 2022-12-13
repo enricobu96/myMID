@@ -166,12 +166,16 @@ def get_node_timestep_data(env, scene, t, node, state, pred_state,
         robot_traj = robot.get(timestep_range_r, state[robot_type], padding=0.0)
         robot_traj_st_t = get_relative_robot_traj(env, state, x_node, robot_traj, node.type, robot_type)
 
-    maps = {
-        'semantic_pred': scene.semantic_map_pred
+    timestep_range_history = np.array([t - max_ht, t])
+    obs_traj_maps = node.get_traj_map(timestep_range_history)
+
+    goal = {
+        'semantic_pred': scene.semantic_map_pred,
+        'obs_traj_maps': obs_traj_maps
     }
 
     return (first_history_index, x_t, y_t, x_st_t, y_st_t, neighbors_data_st,
-            neighbors_edge_value, robot_traj_st_t, maps)
+            neighbors_edge_value, robot_traj_st_t, goal)
 
 
 def get_timesteps_data(env, scene, t, node_type, state, pred_state,
@@ -199,6 +203,7 @@ def get_timesteps_data(env, scene, t, node_type, state, pred_state,
     batch = list()
     nodes = list()
     out_timesteps = list()
+    goals = list()
     for timestep in nodes_per_ts.keys():
             scene_graph = scene.get_scene_graph(timestep,
                                                 env.attention_radius,
@@ -208,9 +213,15 @@ def get_timesteps_data(env, scene, t, node_type, state, pred_state,
             for node in present_nodes:
                 nodes.append(node)
                 out_timesteps.append(timestep)
-                batch.append(get_node_timestep_data(env, scene, timestep, node, state, pred_state,
-                                                    edge_types, max_ht, max_ft, hyperparams,
-                                                    scene_graph=scene_graph))
+                (first_history_index, x_t, y_t, x_st_t, y_st_t, neighbors_data_st,
+                    neighbors_edge_value, robot_traj_st_t, goal) = get_node_timestep_data(
+                        env, scene, timestep, node, state, pred_state,
+                        edge_types, max_ht, max_ft, hyperparams,
+                        scene_graph=scene_graph
+                )
+                batch.append((first_history_index, x_t, y_t, x_st_t, y_st_t, neighbors_data_st,
+                    neighbors_edge_value, robot_traj_st_t))
+                goals.append(goal)
     if len(out_timesteps) == 0:
         return None
-    return collate(batch), nodes, out_timesteps
+    return collate(batch), nodes, out_timesteps, goals

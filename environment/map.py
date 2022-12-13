@@ -62,18 +62,16 @@ class SemanticMap(object):
         sem_map = [(sem_map == v) for v in range(num_classes)]
         sem_map = np.stack(sem_map, axis=-1).astype(int)
         self.data = sem_map
-        self.tensor_image = self._create_tensor_image()
+        self.tensor_image = self._create_tensor_image(down_factor=8)
         self.description = description
         self.scene = scene
     
     def as_image(self):
         return self.data
 
-    def get_tensor_image(self, down_factor=1):
+    def get_tensor_image(self):
         return self.tensor_image
 
-    def get_input_traj_maps(self, abs_pixel_coord, down_factor=1):
-        return self._create_CNN_inputs_loop(batch_abs_pixel_coords=torch.tensor(abs_pixel_coord).float() / down_factor)
 
     def _create_tensor_image(self, down_factor=1):
         img = TT.functional.to_tensor(self.data)
@@ -83,85 +81,6 @@ class SemanticMap(object):
         tensor_image = TT.functional.resize(img, (new_heigth, new_width),
                                             interpolation=TT.InterpolationMode.NEAREST)
         return tensor_image
-
-    def _create_CNN_inputs_loop(self, batch_abs_pixel_coords):
-        num_agents = batch_abs_pixel_coords.shape[1]
-        C, H, W = self.tensor_image.shape
-        input_traj_maps = list()
-
-        # loop over agents
-        for agent_idx in range(num_agents):
-            trajectory = batch_abs_pixel_coords[:, agent_idx, :]
-
-            traj_map_cnn = self._make_gaussian_map_patches(
-                gaussian_centers=trajectory,
-                height=H,
-                width=W)
-            # append
-            input_traj_maps.append(traj_map_cnn)
-
-        # list --> tensor
-        input_traj_maps = torch.cat(input_traj_maps, dim=0)
-
-        return input_traj_maps
-
-    def _make_gaussian_map_patches(self, gaussian_centers,
-                              width,
-                              height,
-                              norm=False,
-                              gaussian_std=None):
-        """
-        gaussian_centers.shape == (T, 2)
-        Make a PyTorch gaussian GT map of size (1, T, height, width)
-        centered in gaussian_centers. The coordinates of the centers are
-        computed starting from the left upper corner.
-        """
-        assert isinstance(gaussian_centers, torch.Tensor)
-
-        if not gaussian_std:
-            gaussian_std = min(width, height) / 64
-        gaussian_var = gaussian_std ** 2
-
-        x_range = torch.arange(0, height, 1)
-        y_range = torch.arange(0, width, 1)
-        grid_x, grid_y = torch.meshgrid(x_range, y_range)
-        pos = torch.stack((grid_y, grid_x), dim=2)
-        pos = pos.unsqueeze(2)
-
-        gaussian_map = (1. / (2. * math.pi * gaussian_var)) * \
-                    torch.exp(-torch.sum((pos - gaussian_centers) ** 2., dim=-1)
-                                / (2 * gaussian_var))
-
-        # from (H, W, T) to (1, T, H, W)
-        gaussian_map = gaussian_map.permute(2, 0, 1).unsqueeze(0)
-
-        if norm:
-            # normalised prob: sum over coordinates equals 1
-            gaussian_map = self.normalize_prob_map(gaussian_map)
-        else:
-            # un-normalize probabilities (otherwise the network learns all zeros)
-            # each pixel has value between 0 and 1
-            gaussian_map = self._un_normalize_prob_map(gaussian_map)
-
-        return gaussian_map
-
-    def _normalize_prob_map(self, x):
-        """Normalize a probability map of shape (B, T, H, W) so
-        that sum over H and W equal ones"""
-        assert len(x.shape) == 4
-        sums = x.sum(-1, keepdim=True).sum(-2, keepdim=True)
-        x = torch.divide(x, sums)
-        return x
-
-
-    def _un_normalize_prob_map(self, x):
-        """Un-Normalize a probability map of shape (B, T, H, W) so
-        that each pixel has value between 0 and 1"""
-        assert len(x.shape) == 4
-        (B, T, H, W) = x.shape
-        maxs, _ = x.reshape(B, T, -1).max(-1)
-        x = torch.divide(x, maxs.unsqueeze(-1).unsqueeze(-1))
-        return x
 
 
 class GeometricMap(Map):
