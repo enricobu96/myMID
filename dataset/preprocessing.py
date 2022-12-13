@@ -213,15 +213,11 @@ def get_timesteps_data(env, scene, t, node_type, state, pred_state,
             for node in present_nodes:
                 nodes.append(node)
                 out_timesteps.append(timestep)
-                (first_history_index, x_t, y_t, x_st_t, y_st_t, neighbors_data_st,
-                    neighbors_edge_value, robot_traj_st_t, goal) = get_node_timestep_data(
+                batch.append(get_node_timestep_data(
                         env, scene, timestep, node, state, pred_state,
                         edge_types, max_ht, max_ft, hyperparams,
                         scene_graph=scene_graph
-                )
-                batch.append((first_history_index, x_t, y_t, x_st_t, y_st_t, neighbors_data_st,
-                    neighbors_edge_value, robot_traj_st_t))
-                goals.append(goal)
+                        ))
     if len(out_timesteps) == 0:
         return None
     return collate(batch), nodes, out_timesteps, goals

@@ -254,7 +254,7 @@ class DiffusionTraj(Module):
 
         return loss
 
-    def sample(self, num_points, context, sample, bestof, point_dim=2, flexibility=0.0, ret_traj=False):
+    def sample(self, num_points, context, sample, bestof, point_dim=2, flexibility=0.0, ret_traj=False, goal=None):
         traj_list = []
         for i in range(sample):
             batch_size = context.size(0)
@@ -273,7 +273,7 @@ class DiffusionTraj(Module):
 
                 x_t = traj[t]
                 beta = self.var_sched.betas[[t]*batch_size]
-                out = self.net(x_t, beta=beta, context=context)
+                out = self.net(x_t, beta=beta, context=context, goal=goal if self.use_goal else None)
 
                 if self.learn_sigmas:
                     """
