@@ -44,6 +44,9 @@ lambda_vlb: 0.001
 # Reduce gradient noise
 reduce_grad_noise: False
 
+# Goal module
+use_goal: True
+
 ############### Trajectron++ Config #################
 # Misc
 conf: None

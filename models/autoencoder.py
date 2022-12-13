@@ -50,7 +50,8 @@ class AutoEncoder(Module):
             learned_range=self.config.learned_range,
             loss_type=self.config.loss_type,
             ensemble_loss=self.config.ensemble_loss,
-            ensemble_hybrid_steps=self.config.ensemble_hybrid_steps
+            ensemble_hybrid_steps=self.config.ensemble_hybrid_steps,
+            use_goal=self.config.use_goal
         )
 
     def encode(self, batch,node_type):

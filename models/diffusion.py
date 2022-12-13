@@ -170,15 +170,16 @@ class TransformerConcatLinear(Module):
         context = context.view(batch_size, 1, -1)   # (B, 1, F)
         
         # GOAL
-        tensor_images = []
-        obs_traj_maps = []
+        if goal is not None:
+            tensor_images = []
+            obs_traj_maps = []
 
-        for i in range(len(goal['semantic_pred'])):
-            tensor_images.append(goal['semantic_pred'][i].get_tensor_image())
-            obs_traj_maps.append(goal['obs_traj_maps'][i].squeeze(0))
+            for i in range(len(goal['semantic_pred'])):
+                tensor_images.append(goal['semantic_pred'][i].get_tensor_image())
+                obs_traj_maps.append(goal['obs_traj_maps'][i].squeeze(0))
 
-        tensor_images = torch.stack(tensor_images, dim=0)
-        obs_traj_maps = torch.stack(obs_traj_maps, dim=0)
+            tensor_images = torch.stack(tensor_images, dim=0)
+            obs_traj_maps = torch.stack(obs_traj_maps, dim=0)
 
         time_emb = torch.cat([beta, torch.sin(beta), torch.cos(beta)], dim=-1)  # (B, 1, 3)
         ctx_emb = torch.cat([time_emb, context], dim=-1)    # (B, 1, F+3)
@@ -204,7 +205,8 @@ class DiffusionTraj(Module):
                  lambda_vlb=1e-4,
                  loss_type='hybrid',
                  ensemble_loss=False,
-                 ensemble_hybrid_steps=10
+                 ensemble_hybrid_steps=10,
+                 use_goal=False
                  ):
         super().__init__()
         self.net = net
@@ -215,6 +217,7 @@ class DiffusionTraj(Module):
         self.loss_type = loss_type
         self.ensemble_loss = ensemble_loss
         self.ehs = ensemble_hybrid_steps
+        self.use_goal = use_goal
 
     def get_loss(self, x_0, context, goal=None, t=None):
         
@@ -232,7 +235,7 @@ class DiffusionTraj(Module):
         c1 = torch.sqrt(1 - alpha_bar).view(-1, 1, 1).to(x_0.device)   # (B, 1, 1)
         e_rand = torch.randn_like(x_0).to(x_0.device)  # (B, N, d)
 
-        out = self.net(c0 * x_0 + c1 * e_rand, beta=beta, context=context, goal=goal)
+        out = self.net(c0 * x_0 + c1 * e_rand, beta=beta, context=context, goal=goal if self.use_goal else None)
 
         if self.loss_type == 'hybrid':
             loss = self._loss_hybrid(x_0, out, t, c0, c1, e_rand, context)
