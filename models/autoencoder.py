@@ -38,6 +38,12 @@ class AutoEncoder(Module):
                 longterm=self.config.sdd_longterm,
                 dataset=self.config['dataset'],
                 learn_sigmas=self.config.learn_sigmas,
+                use_goal=self.config.use_goal,
+                num_image_channels=self.config.g_image_channels,
+                obs_len=self.config.g_obs_len,
+                pred_len=self.config.g_pred_len,
+                sampler_temp=self.config.g_sampler_temperature,
+                use_ttst=self.config.g_use_ttst,
             ),
             var_sched = VarianceSchedule(
                 num_steps=100,
@@ -51,7 +57,8 @@ class AutoEncoder(Module):
             loss_type=self.config.loss_type,
             ensemble_loss=self.config.ensemble_loss,
             ensemble_hybrid_steps=self.config.ensemble_hybrid_steps,
-            use_goal=self.config.use_goal
+            use_goal=self.config.use_goal,
+            g_loss_lambda=self.config.g_loss_lambda
         )
 
     def encode(self, batch,node_type):

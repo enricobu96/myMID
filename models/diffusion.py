@@ -6,6 +6,8 @@ import torch.nn as nn
 from .common import *
 import pdb
 from .diffusion_utils import _extract_into_tensor, _vb_terms_bpd, mean_flat
+from .goal.unet import UNet
+from .goal.sampling_2d_map import TTST_test_time_sampling_trick, sampling
 
 class VarianceSchedule(Module):
     """
@@ -153,7 +155,21 @@ class TransformerConcatLinear(Module):
     Methods:
     forward(x,beta,context): nn.Linear : forward pass for the decoder model
     """
-    def __init__(self, point_dim, context_dim, tf_layer, residual, longterm=False, dataset=None, learn_sigmas=False):
+    def __init__(self,
+                point_dim,
+                context_dim,
+                tf_layer,
+                residual,
+                longterm=False,
+                dataset=None,
+                learn_sigmas=False,
+                use_goal=False,
+                num_image_channels=6,
+                obs_len=8,
+                pred_len=12,
+                sampler_temp=1,
+                use_ttst=False
+                ):
         super().__init__()
         self.residual = residual
         self.pos_emb = PositionalEncoding(d_model=2*context_dim, dropout=0.1, max_len=30 if longterm and dataset=='sdd' else 24)
@@ -163,14 +179,26 @@ class TransformerConcatLinear(Module):
         self.concat3 = ConcatSquashLinear(2*context_dim,context_dim,context_dim+3)
         self.concat4 = ConcatSquashLinear(context_dim,context_dim//2,context_dim+3)
         self.linear = ConcatSquashLinear(context_dim//2, 2 if not learn_sigmas else 4, context_dim+3)
+        
+        # GOAL
+        self.use_goal = use_goal
+        if self.use_goal:
+            self.sampler_temperature = sampler_temp
+            self.use_ttst = use_ttst
+            self.goal_module = UNet(
+                enc_chs=(num_image_channels + obs_len,
+                        32, 32, 64, 64, 64),
+                dec_chs=(64, 64, 64, 32, 32),
+                out_chs=pred_len)
 
-    def forward(self, x, beta, context, goal):
+
+    def forward(self, x, beta, context, goal, num_samples=1):
         batch_size = x.size(0)
         beta = beta.view(batch_size, 1, 1)          # (B, 1, 1)
         context = context.view(batch_size, 1, -1)   # (B, 1, F)
         
         # GOAL
-        if goal is not None:
+        if self.use_goal is not None:
             tensor_images = []
             obs_traj_maps = []
 
@@ -180,6 +208,26 @@ class TransformerConcatLinear(Module):
 
             tensor_images = torch.stack(tensor_images, dim=0)
             obs_traj_maps = torch.stack(obs_traj_maps, dim=0)
+            input_goal_module = torch.cat((tensor_images, obs_traj_maps), dim=1).to(x.device)
+            goal_logit_map_start = self.goal_module(input_goal_module)
+            # goal_prob_map = torch.sigmoid(
+            #     goal_logit_map_start[:, -1:] / self.sampler_temperature
+            #     )
+            # if self.use_ttst and num_samples > 3:
+            #     goal_point_start = TTST_test_time_sampling_trick(
+            #         goal_prob_map,
+            #         num_goals=num_samples,
+            #         device=x.device)
+            #     goal_point_start = goal_point_start.squeeze(2).permute(1, 0, 2)
+            # else:
+            #     goal_point_start = sampling(goal_prob_map, num_samples=num_samples)
+            #     goal_point_start = goal_point_start.squeeze(1)
+            # print(goal_prob_map.shape)
+
+        goal_stuff = {
+            'logit_map': goal_logit_map_start,
+            'goal_map': obs_traj_maps
+        }
 
         time_emb = torch.cat([beta, torch.sin(beta), torch.cos(beta)], dim=-1)  # (B, 1, 3)
         ctx_emb = torch.cat([time_emb, context], dim=-1)    # (B, 1, F+3)
@@ -190,7 +238,7 @@ class TransformerConcatLinear(Module):
         trans = self.transformer_encoder(final_emb).permute(1,0,2)
         trans = self.concat3(ctx_emb, trans)
         trans = self.concat4(ctx_emb, trans)
-        return self.linear(ctx_emb, trans)
+        return (self.linear(ctx_emb, trans), goal_stuff)
 
 class DiffusionTraj(Module):
     """
@@ -206,7 +254,8 @@ class DiffusionTraj(Module):
                  loss_type='hybrid',
                  ensemble_loss=False,
                  ensemble_hybrid_steps=10,
-                 use_goal=False
+                 use_goal=False,
+                 g_loss_lambda=1
                  ):
         super().__init__()
         self.net = net
@@ -218,6 +267,7 @@ class DiffusionTraj(Module):
         self.ensemble_loss = ensemble_loss
         self.ehs = ensemble_hybrid_steps
         self.use_goal = use_goal
+        self.g_loss_lambda = g_loss_lambda
 
     def get_loss(self, x_0, context, goal=None, t=None):
         
@@ -235,19 +285,31 @@ class DiffusionTraj(Module):
         c1 = torch.sqrt(1 - alpha_bar).view(-1, 1, 1).to(x_0.device)   # (B, 1, 1)
         e_rand = torch.randn_like(x_0).to(x_0.device)  # (B, N, d)
 
-        out = self.net(c0 * x_0 + c1 * e_rand, beta=beta, context=context, goal=goal if self.use_goal else None)
+        out, goal = self.net(c0 * x_0 + c1 * e_rand, beta=beta, context=context, goal=goal if self.use_goal else None)
 
         if self.loss_type == 'hybrid':
             loss = self._loss_hybrid(x_0, out, t, c0, c1, e_rand, context)
+            if self.use_goal:
+                loss_goal = self._goal_bce_loss(goal['logit_map'], goal['goal_map'])
+                loss = loss + self.g_loss_lambda*loss_goal
             
         elif self.loss_type == 'vlb':
             if self.ensemble_loss:
                 loss = self._loss_ensemble(x_0, out, t, c0, c1, e_rand, context)
+                if self.use_goal:
+                    loss_goal = self._goal_bce_loss(goal['logit_map'], goal['goal_map'])
+                    loss = loss + self.g_loss_lambda*loss_goal
             else:
                 loss = self._loss_vlb(x_0, out, t, c0, c1, e_rand, context)
+                if self.use_goal:
+                    loss_goal = self._goal_bce_loss(goal['logit_map'], goal['goal_map'])
+                    loss = loss + self.g_loss_lambda*loss_goal
                 
         elif self.loss_type == 'simple':
             loss = self._loss_simple(out, e_rand)
+            if self.use_goal:
+                loss_goal = self._goal_bce_loss(goal['logit_map'], goal['goal_map'])
+                loss = loss + self.g_loss_lambda*loss_goal
             
         else:
             raise NotImplementedError('Loss type not implemented')
@@ -273,7 +335,7 @@ class DiffusionTraj(Module):
 
                 x_t = traj[t]
                 beta = self.var_sched.betas[[t]*batch_size]
-                out = self.net(x_t, beta=beta, context=context, goal=goal if self.use_goal else None)
+                out = self.net(x_t, beta=beta, context=context, goal=goal if self.use_goal else None, num_samples=sample)
 
                 if self.learn_sigmas:
                     """
@@ -419,6 +481,32 @@ class DiffusionTraj(Module):
         
         return final_loss
 
+    """
+    Goal
+    """
+    def _goal_bce_loss(self, logit_map, goal_map_gt, loss_mask):
+        losses_samples = []
+        for logit_map_sample_i in logit_map:
+            loss = self._bce_loss_sample(logit_map_sample_i, goal_map_gt, loss_mask)
+            losses_samples.append(loss)
+        losses_samples = torch.stack(losses_samples)
+
+        loss, _ = losses_samples.min(dim=0)
+
+        return loss
+
+    def _bce_loss_sample(self, logit_map, goal_map_gt):
+        batch_size, T, H, W = logit_map.shape
+        output_reshaped = logit_map.view(batch_size, -1)
+        target_reshaped = goal_map_gt.view(batch_size, -1)
+        BCE_criterion = nn.BCEWithLogitsLoss(reduction='none')
+
+        loss = BCE_criterion(output_reshaped, target_reshaped)
+
+        loss = loss.mean(dim=-1)
+
+        # loss = loss.sum(dim=0)
+        return loss
 """
 NOISE SCHEDULE FUNCTIONS
 """

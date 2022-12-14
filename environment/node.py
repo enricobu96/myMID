@@ -128,7 +128,7 @@ class Node(object):
         padded_data_array[paddingl:length - paddingu] = data_array
         return padded_data_array
     
-    def get_traj_map(self, tr_scene, padding=np.nan):
+    def get_traj_map(self, tr_scene, padding=0.0):
         """
         Returns a time range for the trajectory map.
 
