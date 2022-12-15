@@ -296,30 +296,30 @@ class DiffusionTraj(Module):
         c1 = torch.sqrt(1 - alpha_bar).view(-1, 1, 1).to(x_0.device)   # (B, 1, 1)
         e_rand = torch.randn_like(x_0).to(x_0.device)  # (B, N, d)
 
-        out, goal = self.net(c0 * x_0 + c1 * e_rand, beta=beta, context=context, goal=goal if self.use_goal else None)
+        out, goal_data = self.net(c0 * x_0 + c1 * e_rand, beta=beta, context=context, goal=goal if self.use_goal else None)
 
         if self.loss_type == 'hybrid':
             loss = self._loss_hybrid(x_0, out, t, c0, c1, e_rand, context)
             if self.use_goal:
-                loss_goal = self._goal_bce_loss(goal['logit_map'], goal['goal_map'])
+                loss_goal = self._goal_bce_loss(goal_data['logit_map'], goal_data['goal_map'])
                 loss = loss + self.g_loss_lambda*loss_goal
             
         elif self.loss_type == 'vlb':
             if self.ensemble_loss:
                 loss = self._loss_ensemble(x_0, out, t, c0, c1, e_rand, context)
                 if self.use_goal:
-                    loss_goal = self._goal_bce_loss(goal['logit_map'], goal['goal_map'])
+                    loss_goal = self._goal_bce_loss(goal_data['logit_map'], goal_data['goal_map'])
                     loss = loss + self.g_loss_lambda*loss_goal
             else:
                 loss = self._loss_vlb(x_0, out, t, c0, c1, e_rand, context)
                 if self.use_goal:
-                    loss_goal = self._goal_bce_loss(goal['logit_map'], goal['goal_map'])
+                    loss_goal = self._goal_bce_loss(goal_data['logit_map'], goal_data['goal_map'])
                     loss = loss + self.g_loss_lambda*loss_goal
                 
         elif self.loss_type == 'simple':
             loss = self._loss_simple(out, e_rand)
             if self.use_goal:
-                loss_goal = self._goal_bce_loss(goal['logit_map'], goal['goal_map'])
+                loss_goal = self._goal_bce_loss(goal_data['logit_map'], goal_data['goal_map'])
                 loss = loss + self.g_loss_lambda*loss_goal
             
         else:
@@ -346,7 +346,7 @@ class DiffusionTraj(Module):
 
                 x_t = traj[t]
                 beta = self.var_sched.betas[[t]*batch_size]
-                out, goal = self.net(x_t, beta=beta, context=context, goal=goal if self.use_goal else None, num_samples=sample)
+                out, goal_data = self.net(x_t, beta=beta, context=context, goal=goal if self.use_goal else None, num_samples=sample)
 
                 if self.learn_sigmas:
                     """
