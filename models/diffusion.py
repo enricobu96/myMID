@@ -198,16 +198,19 @@ class TransformerConcatLinear(Module):
         context = context.view(batch_size, 1, -1)   # (B, 1, F)
         
         # GOAL
-        if self.use_goal is not None:
+        if self.use_goal:
             tensor_images = []
             obs_traj_maps = []
+            out_maps_gt_goal = []
 
             for i in range(len(goal['semantic_pred'])):
                 tensor_images.append(goal['semantic_pred'][i].get_tensor_image())
                 obs_traj_maps.append(goal['obs_traj_maps'][i].squeeze(0))
+                out_maps_gt_goal.append(goal['out_maps_gt_goal'][i].squeeze(0))
 
             tensor_images = torch.stack(tensor_images, dim=0)
             obs_traj_maps = torch.stack(obs_traj_maps, dim=0)
+            out_maps_gt_goal = torch.stack(out_maps_gt_goal, dim=0)
             input_goal_module = torch.cat((tensor_images, obs_traj_maps), dim=1).to(x.device)
             goal_logit_map_start = self.goal_module(input_goal_module)
             # goal_prob_map = torch.sigmoid(
@@ -226,8 +229,16 @@ class TransformerConcatLinear(Module):
 
         goal_stuff = {
             'logit_map': goal_logit_map_start,
-            'goal_map': obs_traj_maps
+            'goal_map': out_maps_gt_goal
         }
+
+        all_goal_stuff = []
+        all_goal_stuff.append(goal_stuff)
+
+        all_goal_stuff = {k: torch.stack([d[k] for d in all_goal_stuff])
+                           for k in all_goal_stuff[0].keys()}
+
+
 
         time_emb = torch.cat([beta, torch.sin(beta), torch.cos(beta)], dim=-1)  # (B, 1, 3)
         ctx_emb = torch.cat([time_emb, context], dim=-1)    # (B, 1, F+3)
@@ -238,7 +249,7 @@ class TransformerConcatLinear(Module):
         trans = self.transformer_encoder(final_emb).permute(1,0,2)
         trans = self.concat3(ctx_emb, trans)
         trans = self.concat4(ctx_emb, trans)
-        return (self.linear(ctx_emb, trans), goal_stuff)
+        return (self.linear(ctx_emb, trans), all_goal_stuff)
 
 class DiffusionTraj(Module):
     """
@@ -335,7 +346,7 @@ class DiffusionTraj(Module):
 
                 x_t = traj[t]
                 beta = self.var_sched.betas[[t]*batch_size]
-                out = self.net(x_t, beta=beta, context=context, goal=goal if self.use_goal else None, num_samples=sample)
+                out, goal = self.net(x_t, beta=beta, context=context, goal=goal if self.use_goal else None, num_samples=sample)
 
                 if self.learn_sigmas:
                     """
@@ -484,10 +495,12 @@ class DiffusionTraj(Module):
     """
     Goal
     """
-    def _goal_bce_loss(self, logit_map, goal_map_gt, loss_mask):
+    def _goal_bce_loss(self, logit_map, goal_map_gt): #, loss_mask):
+        
         losses_samples = []
+        
         for logit_map_sample_i in logit_map:
-            loss = self._bce_loss_sample(logit_map_sample_i, goal_map_gt, loss_mask)
+            loss = self._bce_loss_sample(logit_map_sample_i, goal_map_gt)#, loss_mask)
             losses_samples.append(loss)
         losses_samples = torch.stack(losses_samples)
 

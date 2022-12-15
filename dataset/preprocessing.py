@@ -169,9 +169,13 @@ def get_node_timestep_data(env, scene, t, node, state, pred_state,
     timestep_range_history = np.array([t - max_ht, t])
     obs_traj_maps = node.get_traj_map(timestep_range_history)
 
+    timestep_range_maps_gt = np.array([t + 1, t + max_ft])
+    out_maps_gt_goal = node.get_traj_map(timestep_range_maps_gt)
+
     goal = {
         'semantic_pred': scene.semantic_map_pred,
-        'obs_traj_maps': obs_traj_maps
+        'obs_traj_maps': obs_traj_maps,
+        'out_maps_gt_goal': out_maps_gt_goal
     }
 
     return (first_history_index, x_t, y_t, x_st_t, y_st_t, neighbors_data_st,
