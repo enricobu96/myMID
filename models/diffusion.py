@@ -238,8 +238,6 @@ class TransformerConcatLinear(Module):
         all_goal_stuff = {k: torch.stack([d[k] for d in all_goal_stuff])
                            for k in all_goal_stuff[0].keys()}
 
-
-
         time_emb = torch.cat([beta, torch.sin(beta), torch.cos(beta)], dim=-1)  # (B, 1, 3)
         ctx_emb = torch.cat([time_emb, context], dim=-1)    # (B, 1, F+3)
         x = self.concat1(ctx_emb,x)
@@ -250,6 +248,12 @@ class TransformerConcatLinear(Module):
         trans = self.concat3(ctx_emb, trans)
         trans = self.concat4(ctx_emb, trans)
         return (self.linear(ctx_emb, trans), all_goal_stuff)
+
+        # if not variance: (theta_x, theta_y)
+        # if variance: (theta_x, theta_y), (sigma_x, sigma_y)
+        # pred_noise = mu((thetax, thetay), (sigmax, sigmay))
+        # pred_x, pred_y = (noisy_x, noisy_y) - pred_noise
+
 
 class DiffusionTraj(Module):
     """
@@ -297,6 +301,10 @@ class DiffusionTraj(Module):
         e_rand = torch.randn_like(x_0).to(x_0.device)  # (B, N, d)
 
         out, goal_data = self.net(c0 * x_0 + c1 * e_rand, beta=beta, context=context, goal=goal if self.use_goal else None)
+
+        # feed to the second transformer: first 8 (history) of x_0 and goal_data
+        # the second transformer should output (12, 2) tensor (future timesteps x, y)
+        # compute MSE loss between output of second transformer and 9..20 entries of gt (futures of x_0)
 
         if self.loss_type == 'hybrid':
             loss = self._loss_hybrid(x_0, out, t, c0, c1, e_rand, context)
@@ -367,6 +375,10 @@ class DiffusionTraj(Module):
                     e_theta = out
                     sigma = self.var_sched.get_sigmas(t, flexibility)
                     x_next = c0 * (x_t - c1 * e_theta) + sigma * z
+
+                # find a way to get history timesteps in sample
+                # feed the second transformer with history and goal_data
+                # find a way to use this data (mean or fc layer to fuse them)
 
                 traj[t-1] = x_next.detach()     # Stop gradient and save trajectory.
                 traj[t] = traj[t].cpu()         # Move previous output to CPU memory.
