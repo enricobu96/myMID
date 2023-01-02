@@ -3,7 +3,6 @@ import numpy as np
 import pandas as pd
 from environment import DoubleHeaderNumpyArray
 from ncls import NCLS
-import torch
 
 
 class Node(object):
@@ -32,7 +31,7 @@ class Node(object):
         get(self,tr_scene,state,padding=np.nan): np.ndarray : read documentation of the method
     """
     def __init__(self, node_type, node_id, data, length=None, width=None, height=None, first_timestep=0,
-                 is_robot=False, description="", frequency_multiplier=1, non_aug_node=None, traj_map=None):
+                 is_robot=False, description="", frequency_multiplier=1, non_aug_node=None):
         self.type = node_type
         self.id = node_id
         self.length = length
@@ -40,7 +39,6 @@ class Node(object):
         self.height = height
         self.first_timestep = first_timestep
         self.non_aug_node = non_aug_node
-        self.traj_map = traj_map
 
         if data is not None:
             if isinstance(data, pd.DataFrame):
@@ -127,23 +125,6 @@ class Node(object):
         padded_data_array = np.full((length, data_array.shape[1]), fill_value=padding)
         padded_data_array[paddingl:length - paddingu] = data_array
         return padded_data_array
-    
-    def get_traj_map(self, tr_scene, padding=0.0):
-        """
-        Returns a time range for the trajectory map.
-
-        :param tr_scene: The timestep range (inklusive).
-        :return: the right portion of the trajectory map.
-        """
-        if tr_scene.size == 1:
-            tr_scene = np.array([tr_scene[0], tr_scene[0]])
-        length = tr_scene[1] - tr_scene[0] + 1  # tr is inclusive
-        tr, paddingl, paddingu = self.scene_ts_to_node_ts(tr_scene)
-        traj_array = self.traj_map[:, tr[0]:tr[1] + 1]
-        padded_traj_array = np.full((self.traj_map.shape[0], length, self.traj_map.shape[2], self.traj_map.shape[3]), fill_value=padding)
-        padded_traj_array[:, paddingl:length - paddingu] = traj_array
-        return torch.Tensor(padded_traj_array)
-
 
     @property
     def timesteps(self) -> int:
