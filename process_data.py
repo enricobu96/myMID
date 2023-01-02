@@ -11,11 +11,9 @@ import numpy as np
 import pandas as pd
 import dill
 import pickle
-import torch
-import math
 
 from environment import Environment, Scene, Node, derivative_of
-from environment.map import Map, SemanticMap
+from environment.map import Map
 
 # For debug reasons
 from pprint import pprint
@@ -28,7 +26,6 @@ state_dim = 6
 frame_diff = 10
 desired_frame_diff = 1
 dt = 0.4
-VISUALIZE = False # Put to true to have the maps into the scenes (slows down a lot training)
 
 standardization = {
     'PEDESTRIAN': {
@@ -46,73 +43,6 @@ standardization = {
         }
     }
 }
-
-def get_input_traj_maps(x, y, tensor_image, down_factor=8):
-    abs_pixel_coord = np.stack((x, y), axis=1)
-    abs_pixel_coord = np.expand_dims(abs_pixel_coord, axis=1)
-    return _create_CNN_inputs_loop(batch_abs_pixel_coords=torch.tensor(abs_pixel_coord).float() / down_factor, tensor_image=tensor_image)
-
-def _create_CNN_inputs_loop(batch_abs_pixel_coords, tensor_image):
-    num_agents = batch_abs_pixel_coords.shape[1]
-    C, H, W = tensor_image.shape
-    input_traj_maps = list()
-
-    for agent_idx in range(num_agents):
-        trajectory = batch_abs_pixel_coords[:, agent_idx, :].detach()\
-        .clone().to(torch.device("cpu"))
-
-        traj_map_cnn = _make_gaussian_map_patches(
-            gaussian_centers=trajectory,
-            height=H,
-            width=W)
-        input_traj_maps.append(traj_map_cnn)
-
-    input_traj_maps = torch.cat(input_traj_maps, dim=0)
-
-    return input_traj_maps
-
-def _make_gaussian_map_patches(gaussian_centers,
-                            width,
-                            height,
-                            norm=False,
-                            gaussian_std=None):
-    assert isinstance(gaussian_centers, torch.Tensor)
-
-    if not gaussian_std:
-        gaussian_std = min(width, height) / 64
-    gaussian_var = gaussian_std ** 2
-
-    x_range = torch.arange(0, height, 1)
-    y_range = torch.arange(0, width, 1)
-    grid_x, grid_y = torch.meshgrid(x_range, y_range)
-    pos = torch.stack((grid_y, grid_x), dim=2)
-    pos = pos.unsqueeze(2)
-
-    gaussian_map = (1. / (2. * math.pi * gaussian_var)) * \
-                torch.exp(-torch.sum((pos - gaussian_centers) ** 2., dim=-1)
-                            / (2 * gaussian_var))
-
-    gaussian_map = gaussian_map.permute(2, 0, 1).unsqueeze(0)
-
-    if norm:
-        gaussian_map = _normalize_prob_map(gaussian_map)
-    else:
-        gaussian_map = _un_normalize_prob_map(gaussian_map)
-
-    return gaussian_map
-
-def _normalize_prob_map(x):
-    assert len(x.shape) == 4
-    sums = x.sum(-1, keepdim=True).sum(-2, keepdim=True)
-    x = torch.divide(x, sums)
-    return x
-
-def _un_normalize_prob_map(x):
-    assert len(x.shape) == 4
-    (B, T, H, W) = x.shape
-    maxs, _ = x.reshape(B, T, -1).max(-1)
-    x = torch.divide(x, maxs.unsqueeze(-1).unsqueeze(-1))
-    return x
 
 def maybe_makedirs(path_to_create):
     """
@@ -187,17 +117,6 @@ data_folder_name = 'processed_data_noise'
 
 maybe_makedirs(data_folder_name)
 
-data_file_name_to_scene = {
-            "biwi_eth": 'eth',
-            "biwi_hotel": 'hotel',
-            "students001": 'univ',
-            "students003": 'univ',
-            "uni_examples": 'univ',
-            "crowds_zara01": 'zara1',
-            "crowds_zara02": 'zara2',
-            "crowds_zara03": 'zara2',
-            }
-
 """
 Process data for ETH-UCY dataset.
 """
@@ -215,7 +134,7 @@ for desired_source in ['eth', 'hotel', 'univ', 'zara1', 'zara2']:
 
         for subdir, dirs, files in os.walk(os.path.join('raw_data', desired_source, data_class)):
             for file in files:
-                if file.endswith('.txt'):                    
+                if file.endswith('.txt'):
                     # Reads input txt file and loads it into dataframe
                     input_data_dict = dict()
                     full_data_path = os.path.join(subdir, file)
@@ -240,8 +159,6 @@ for desired_source in ['eth', 'hotel', 'univ', 'zara1', 'zara2']:
                         data['pos_x'] = data['pos_x'] * 0.6
                         data['pos_y'] = data['pos_y'] * 0.6
 
-                    mean_x = data['pos_x'].mean()
-                    mean_y = data['pos_y'].mean()
                     # if data_class == "train":
                     #     #data_gauss = data.copy(deep=True)
                     #     data['pos_x'] = data['pos_x'] + 2 * np.random.normal(0,1)
@@ -254,23 +171,8 @@ for desired_source in ['eth', 'hotel', 'univ', 'zara1', 'zara2']:
 
                     max_timesteps = data['frame_id'].max()
 
-                    file_name = file.replace("_train", "").replace("_val", "").replace(".txt", "")
-                    map_path = 'raw_data/eth_scenes/' + data_file_name_to_scene[file_name] + '_reference.jpg'
-                    homography_path = 'raw_data/eth_scenes/' + data_file_name_to_scene[file_name] + '_H.txt'
-                    semantic_map_gt_path = 'raw_data/eth_scenes/' + data_file_name_to_scene[file_name] + '_mask.png'
-                    semantic_map_pred_path = 'raw_data/eth_scenes/' + data_file_name_to_scene[file_name] + '_pred_mask.png'
-
-                    scene = Scene(
-                        timesteps=max_timesteps+1,
-                        map=None,
-                        semantic_map_gt=None,
-                        semantic_map_pred=SemanticMap(data=semantic_map_pred_path, scene=desired_source),
-                        dt=dt,
-                        name=desired_source + "_" + data_class,
-                        aug_func=augment if data_class == 'train' else None,
-                        mean_x=mean_x,
-                        mean_y=mean_y
-                    )
+                    # Creates the scene
+                    scene = Scene(timesteps=max_timesteps+1, dt=dt, name=desired_source + "_" + data_class, aug_func=augment if data_class == 'train' else None)
 
                     # For each node
                     for node_id in pd.unique(data['node_id']):
@@ -300,11 +202,7 @@ for desired_source in ['eth', 'hotel', 'univ', 'zara1', 'zara2']:
                                      ('acceleration', 'y'): ay}
 
                         node_data = pd.DataFrame(data_dict, columns=data_columns)
-                        node = Node(node_type=env.NodeType.PEDESTRIAN,
-                            node_id=node_id,
-                            data=node_data,
-                            traj_map=get_input_traj_maps(x, y, scene.semantic_map_pred.get_tensor_image())
-                            )
+                        node = Node(node_type=env.NodeType.PEDESTRIAN, node_id=node_id, data=node_data)
                         node.first_timestep = new_first_idx
 
                         scene.nodes.append(node)
@@ -313,10 +211,6 @@ for desired_source in ['eth', 'hotel', 'univ', 'zara1', 'zara2']:
                         angles = np.arange(0, 360, 15) if data_class == 'train' else [0]
                         for angle in angles:
                             scene.augmented.append(augment_scene(scene, angle))
-
-                    if VISUALIZE:
-                        scene.map = Map(data=map_path, homography=homography_path, scene=desired_source)
-                        scene.semantic_map_gt = SemanticMap(data=semantic_map_gt_path, scene=desired_source)
 
                     print(scene)
                     scenes.append(scene)
@@ -377,20 +271,7 @@ for data_class in ["train", "test"]:
 
         if len(data) > 0:
             map_path = raw_path + '/maps/' + data_class + '/' + scene_id + '/reference.jpg'
-            homography_path = raw_path + '/maps/' + data_class + '/' + scene_id + '/H.txt'
-            semantic_map_gt_path = raw_path + '/maps/' + data_class + '/' + scene_id + '/mask.png'
-            semantic_map_pred_path = raw_path + '/maps/' + data_class + '/' + scene_id + '/pred_mask.png'
-            scene = Scene(
-                timesteps=max_timesteps+1,
-                map=None,
-                semantic_map_gt=None,
-                semantic_map_pred=SemanticMap(data = semantic_map_pred_path, scene = 'sdd'),
-                dt=dt,
-                name="sdd_" + data_class,
-                aug_func=augment if data_class == 'train' else None,
-                mean_x=mean_x,
-                mean_y=mean_y
-            )
+            scene = Scene(timesteps=max_timesteps+1, map=Map(map_path), dt=dt, name="sdd_" + data_class, aug_func=augment if data_class == 'train' else None, mean_x=mean_x, mean_y=mean_y)
             n=0
             for node_id in pd.unique(data['node_id']):
 
@@ -424,16 +305,9 @@ for data_class in ["train", "test"]:
                                  ('acceleration', 'y'): ay}
 
                     node_data = pd.DataFrame(data_dict, columns=data_columns)
-                    node = Node(node_type=env.NodeType.PEDESTRIAN,
-                        node_id=node_id,
-                        data=node_data,
-                        traj_map = get_input_traj_maps(x,y,scene.semantic_map_pred.get_tensor_image())
-                        )
+                    node = Node(node_type=env.NodeType.PEDESTRIAN, node_id=node_id, data=node_data)
                     node.first_timestep = new_first_idx
 
-                    if VISUALIZE:
-                        scene.map = Map(data = map_path, homography = homography_path, scene = 'sdd')
-                        scene.semantic_map_gt = SemanticMap(data = semantic_map_gt_path, scene = 'sdd')
                     scene.nodes.append(node)
             if data_class == 'train':
                 scene.augmented = list()
