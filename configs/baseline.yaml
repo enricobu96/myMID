@@ -18,7 +18,7 @@ eval_every: 1
 
 # Testing
 eval_at: 1
-eval_mode: False
+eval_mode: True
 
 # Visualization
 save_losses_plots: False # Used for visualization purposes only (very slow since it computes also the fake MSE loss)
@@ -52,6 +52,7 @@ g_pred_len: 12
 g_sampler_temperature: 1
 g_use_ttst: True
 g_loss_lambda: 1
+g_weight_samples: 1
 
 ############### Trajectron++ Config #################
 # Misc

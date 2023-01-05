@@ -294,7 +294,8 @@ class DiffusionTraj(Module):
                  ensemble_loss=False,
                  ensemble_hybrid_steps=10,
                  use_goal=False,
-                 g_loss_lambda=1
+                 g_loss_lambda=1,
+                 g_weight_samples=1
                  ):
         super().__init__()
         self.net = net
@@ -310,6 +311,7 @@ class DiffusionTraj(Module):
         if self.use_goal:
             self.goal_net = TransformerGoal()
         self.loss_g = nn.MSELoss(reduction='mean')
+        self.g_weight_samples = g_weight_samples
 
     def get_loss(self, x_0, context, goal=None, t=None, history=None):
         
@@ -364,7 +366,7 @@ class DiffusionTraj(Module):
 
         return loss
 
-    def sample(self, num_points, context, sample, bestof, point_dim=2, flexibility=0.0, ret_traj=False, goal=None):
+    def sample(self, num_points, context, sample, bestof, point_dim=2, flexibility=0.0, ret_traj=False, goal=None, history=None):
         traj_list = []
         for i in range(sample):
             batch_size = context.size(0)
@@ -408,16 +410,21 @@ class DiffusionTraj(Module):
                 # find a way to get history timesteps in sample
                 # feed the second transformer with history and goal_data
                 # find a way to use this data (mean or fc layer to fuse them)
-
+                         
                 traj[t-1] = x_next.detach()     # Stop gradient and save trajectory.
                 traj[t] = traj[t].cpu()         # Move previous output to CPU memory.
                 if not ret_traj:
                    del traj[t]
+                
 
-            if ret_traj:
+            if ret_traj: # this does not work with goal
                 traj_list.append(traj)
             else:
-                traj_list.append(traj[0])
+                tr = traj[0]
+                if self.use_goal:
+                    out_goal_transformer = self.goal_net(history, goal_data)
+                    tr = (tr + self.g_weight_samples*out_goal_transformer) / (1+self.g_weight_samples)
+                traj_list.append(tr)
         return torch.stack(traj_list)
     
     """

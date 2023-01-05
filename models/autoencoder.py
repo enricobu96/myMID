@@ -58,7 +58,8 @@ class AutoEncoder(Module):
             ensemble_loss=self.config.ensemble_loss,
             ensemble_hybrid_steps=self.config.ensemble_hybrid_steps,
             use_goal=self.config.use_goal,
-            g_loss_lambda=self.config.g_loss_lambda
+            g_loss_lambda=self.config.g_loss_lambda,
+            g_weight_samples=self.config.g_weight_samples
         )
 
     def encode(self, batch,node_type):
@@ -69,7 +70,7 @@ class AutoEncoder(Module):
         goal = batch[-1]
         dynamics = self.encoder.node_models_dict[node_type].dynamic
         encoded_x = self.encoder.get_latent(batch, node_type)
-        predicted_y_vel =  self.diffusion.sample(num_points, encoded_x,sample,bestof, flexibility=flexibility, ret_traj=ret_traj, goal=goal)
+        predicted_y_vel =  self.diffusion.sample(num_points, encoded_x,sample,bestof, flexibility=flexibility, ret_traj=ret_traj, goal=goal, history=batch[1])
         predicted_y_pos = dynamics.integrate_samples(predicted_y_vel)
         return predicted_y_pos.cpu().detach().numpy()
 
