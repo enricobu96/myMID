@@ -9,6 +9,19 @@ from .diffusion_utils import _extract_into_tensor, _vb_terms_bpd, mean_flat
 from .goal.unet import UNet
 from .goal.sampling_2d_map import TTST_test_time_sampling_trick, sampling
 
+from matplotlib import pyplot as plt
+
+class TransformerGoal(Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x_0, goal_data):
+        x_0_pos = x_0[:, :, :2]
+        gp = goal_data['goal_point']
+
+        print(goal_data['goal_point'].shape)
+        return 0
+
 class VarianceSchedule(Module):
     """
     Class representing the variance schedule. In the original formulation, this class works both for the
@@ -213,23 +226,19 @@ class TransformerConcatLinear(Module):
             out_maps_gt_goal = torch.stack(out_maps_gt_goal, dim=0)
             input_goal_module = torch.cat((tensor_images, obs_traj_maps), dim=1).to(x.device)
             goal_logit_map_start = self.goal_module(input_goal_module)
-            # goal_prob_map = torch.sigmoid(
-            #     goal_logit_map_start[:, -1:] / self.sampler_temperature
-            #     )
-            # if self.use_ttst and num_samples > 3:
-            #     goal_point_start = TTST_test_time_sampling_trick(
-            #         goal_prob_map,
-            #         num_goals=num_samples,
-            #         device=x.device)
-            #     goal_point_start = goal_point_start.squeeze(2).permute(1, 0, 2)
-            # else:
-            #     goal_point_start = sampling(goal_prob_map, num_samples=num_samples)
-            #     goal_point_start = goal_point_start.squeeze(1)
-            # print(goal_prob_map.shape)
+            goal_prob_map = torch.sigmoid(
+                goal_logit_map_start[:, -1:] / self.sampler_temperature
+                )
+            goal_point_start = sampling(goal_prob_map, num_samples=1)
+            goal_point_start = goal_point_start.squeeze(1)
+
+            # get last element of the trajectory for each batch of x
+            x_last = x[:, -1, :]
 
         goal_stuff = {
-            'logit_map': goal_logit_map_start,
-            'goal_map': out_maps_gt_goal
+            'goal_logit_map': goal_logit_map_start,
+            'goal_point': x_last,
+            'out_maps_gt_goal': out_maps_gt_goal
         }
 
         all_goal_stuff = []
@@ -283,8 +292,10 @@ class DiffusionTraj(Module):
         self.ehs = ensemble_hybrid_steps
         self.use_goal = use_goal
         self.g_loss_lambda = g_loss_lambda
+        if self.use_goal:
+            self.goal_net = TransformerGoal()
 
-    def get_loss(self, x_0, context, goal=None, t=None):
+    def get_loss(self, x_0, context, goal=None, t=None, history=None):
         
         """
         Push the input in the model and get model output. The latter is then treated in a different
@@ -309,25 +320,28 @@ class DiffusionTraj(Module):
         if self.loss_type == 'hybrid':
             loss = self._loss_hybrid(x_0, out, t, c0, c1, e_rand, context)
             if self.use_goal:
-                loss_goal = self._goal_bce_loss(goal_data['logit_map'], goal_data['goal_map'])
-                loss = loss + self.g_loss_lambda*loss_goal
+                out_goal_transformer = self.goal_net(history, goal_data) # (B, 12, 2)
+                # loss_goal = nn.MSELoss(out_goal_transformer, history)
+                loss = loss #+ self.g_loss_lambda*loss_goal
             
         elif self.loss_type == 'vlb':
             if self.ensemble_loss:
                 loss = self._loss_ensemble(x_0, out, t, c0, c1, e_rand, context)
                 if self.use_goal:
-                    loss_goal = self._goal_bce_loss(goal_data['logit_map'], goal_data['goal_map'])
+                    loss_goal = self._goal_bce_loss(goal_data['goal_logit_map'], goal_data['out_maps_gt_goal'])
                     loss = loss + self.g_loss_lambda*loss_goal
             else:
                 loss = self._loss_vlb(x_0, out, t, c0, c1, e_rand, context)
                 if self.use_goal:
-                    loss_goal = self._goal_bce_loss(goal_data['logit_map'], goal_data['goal_map'])
+                    loss_goal = self._goal_bce_loss(goal_data['goal_logit_map'], goal_data['out_maps_gt_goal'])
                     loss = loss + self.g_loss_lambda*loss_goal
                 
         elif self.loss_type == 'simple':
             loss = self._loss_simple(out, e_rand)
             if self.use_goal:
-                loss_goal = self._goal_bce_loss(goal_data['logit_map'], goal_data['goal_map'])
+                out_goal_transformer = self.goal_net(history, goal_data) # (B, 12, 2)
+                # print(out_goal_transformer.shape)
+                loss_goal = self._goal_bce_loss(goal_data['goal_logit_map'], goal_data['out_maps_gt_goal'])
                 loss = loss + self.g_loss_lambda*loss_goal
             
         else:

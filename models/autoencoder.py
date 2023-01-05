@@ -83,7 +83,6 @@ class AutoEncoder(Module):
 
         feat_x_encoded = self.encode(batch,node_type) # B * 64
 
-
-        loss = self.diffusion.get_loss(y_t.to(self.config.device), feat_x_encoded, goal=goal)
+        loss = self.diffusion.get_loss(y_t.to(self.config.device), feat_x_encoded, goal=goal, history=x_t)
         
         return loss
