@@ -14,13 +14,28 @@ from matplotlib import pyplot as plt
 class TransformerGoal(Module):
     def __init__(self):
         super().__init__()
+        self.fc1 = nn.Bilinear(9, 9, 24) # (B, 9), (B, 9) -> (B, 24)
+        self.relu = nn.ReLU()
+        self.fc2 = nn.Linear(24, 24) # (B, 24) -> (B, 24)
 
     def forward(self, x_0, goal_data):
-        x_0_pos = x_0[:, :, :2]
-        gp = goal_data['goal_point']
+        x_0_pos = x_0[:, :, :2] # (B, 8, 2)
+        x_0_pos = torch.nan_to_num(x_0_pos, nan=0.0)
+        gp = goal_data['goal_point'].squeeze(0) # (B, 2)
+        x_0_pos = torch.cat((x_0_pos, gp.unsqueeze(1)), dim=1) # (B, 9, 2)
 
-        print(goal_data['goal_point'].shape)
-        return 0
+        xs = x_0_pos[:, :, 0].unsqueeze(2) # (B, 9, 1)
+        ys = x_0_pos[:, :, 1].unsqueeze(2) # (B, 9, 1)
+        
+        xs = xs.view(xs.shape[0], -1) # (B, 9)
+        ys = ys.view(ys.shape[0], -1) # (B, 9)
+
+        x = self.fc1(xs, ys) # (B, 24)
+        x = self.relu(x) # (B, 24)
+        x = self.fc2(x) # (B, 24)
+        x = x.view(x.shape[0], 12, 2) # (B, 12, 2)
+
+        return x
 
 class VarianceSchedule(Module):
     """
@@ -294,6 +309,7 @@ class DiffusionTraj(Module):
         self.g_loss_lambda = g_loss_lambda
         if self.use_goal:
             self.goal_net = TransformerGoal()
+        self.loss_g = nn.MSELoss(reduction='mean')
 
     def get_loss(self, x_0, context, goal=None, t=None, history=None):
         
@@ -340,8 +356,7 @@ class DiffusionTraj(Module):
             loss = self._loss_simple(out, e_rand)
             if self.use_goal:
                 out_goal_transformer = self.goal_net(history, goal_data) # (B, 12, 2)
-                # print(out_goal_transformer.shape)
-                loss_goal = self._goal_bce_loss(goal_data['goal_logit_map'], goal_data['out_maps_gt_goal'])
+                loss_goal = self.loss_g(out_goal_transformer, x_0)
                 loss = loss + self.g_loss_lambda*loss_goal
             
         else:

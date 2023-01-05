@@ -51,7 +51,7 @@ g_obs_len: 8
 g_pred_len: 12
 g_sampler_temperature: 1
 g_use_ttst: True
-g_loss_lambda: 100
+g_loss_lambda: 1
 
 ############### Trajectron++ Config #################
 # Misc
