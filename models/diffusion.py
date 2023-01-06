@@ -357,7 +357,7 @@ class DiffusionTraj(Module):
         elif self.loss_type == 'simple':
             loss = self._loss_simple(out, e_rand)
             if self.use_goal:
-                out_goal_transformer = self.goal_net(history, goal_data) # (B, 12, 2)
+                out_goal_transformer = self.goal_net(history.to(x_0.device), goal_data) # (B, 12, 2)
                 loss_goal = self.loss_g(out_goal_transformer, x_0)
                 loss = loss + self.g_loss_lambda*loss_goal
             
@@ -422,7 +422,7 @@ class DiffusionTraj(Module):
             else:
                 tr = traj[0]
                 if self.use_goal:
-                    out_goal_transformer = self.goal_net(history, goal_data)
+                    out_goal_transformer = self.goal_net(history.to(context.device), goal_data)
                     tr = (tr + self.g_weight_samples*out_goal_transformer) / (1+self.g_weight_samples)
                 traj_list.append(tr)
         return torch.stack(traj_list)
