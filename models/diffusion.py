@@ -220,7 +220,7 @@ class TransformerConcatLinear(Module):
                 out_chs=pred_len)
 
 
-    def forward(self, x, beta, context, goal, num_samples=1):
+    def forward(self, x, beta, context, goal, num_samples=1, iftest=False):
         batch_size = x.size(0)
         beta = beta.view(batch_size, 1, 1)          # (B, 1, 1)
         context = context.view(batch_size, 1, -1)   # (B, 1, F)
@@ -252,7 +252,7 @@ class TransformerConcatLinear(Module):
 
         goal_stuff = {
             'goal_logit_map': goal_logit_map_start,
-            'goal_point': x_last,
+            'goal_point': x_last if not iftest else goal_point_start[:, 0],
             'out_maps_gt_goal': out_maps_gt_goal
         }
 
@@ -385,7 +385,7 @@ class DiffusionTraj(Module):
 
                 x_t = traj[t]
                 beta = self.var_sched.betas[[t]*batch_size]
-                out, goal_data = self.net(x_t, beta=beta, context=context, goal=goal if self.use_goal else None, num_samples=sample)
+                out, goal_data = self.net(x_t, beta=beta, context=context, goal=goal if self.use_goal else None, num_samples=sample, iftest=True)
 
                 if self.learn_sigmas:
                     """
