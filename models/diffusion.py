@@ -11,31 +11,75 @@ from .goal.sampling_2d_map import TTST_test_time_sampling_trick, sampling
 
 from matplotlib import pyplot as plt
 
+# # Simple FFNN version
+# class TransformerGoal(Module):
+#     def __init__(self):
+#         super().__init__()
+#         self.fc1 = nn.Bilinear(9, 9, 24) # (B, 9), (B, 9) -> (B, 24)
+#         self.relu = nn.ReLU()
+#         self.fc2 = nn.Linear(24, 24) # (B, 24) -> (B, 24)
+
+#     def forward(self, x_0, goal_point):
+#         x_0_pos = x_0[:, :, :2] # (B, 8, 2)
+#         # x_0_pos = torch.nan_to_num(x_0_pos, nan=0.0) # put them to 0
+
+#         gp = goal_point.squeeze(0) # (B, 2)
+#         x_0_pos = torch.cat((x_0_pos, gp.unsqueeze(1)), dim=1) # (B, 9, 2)
+
+#         xs = x_0_pos[:, :, 0].unsqueeze(2) # (B, 9, 1)
+#         ys = x_0_pos[:, :, 1].unsqueeze(2) # (B, 9, 1)
+        
+#         xs = xs.view(xs.shape[0], -1) # (B, 9)
+#         ys = ys.view(ys.shape[0], -1) # (B, 9)
+
+#         # handle nans: replace nan with first non nan of the tensor
+#         nan_mask = torch.isnan(xs)
+#         not_nan_mask = torch.logical_not(nan_mask)
+#         xs[nan_mask] = torch.masked_select(xs, not_nan_mask)[0]
+
+#         nan_mask = torch.isnan(ys)
+#         not_nan_mask = torch.logical_not(nan_mask)
+#         ys[nan_mask] = torch.masked_select(ys, not_nan_mask)[0]
+
+#         x = self.fc1(xs, ys) # (B, 24)
+#         x = self.relu(x) # (B, 24)
+#         x = self.fc2(x) # (B, 24)
+#         x = x.view(x.shape[0], 12, 2) # (B, 12, 2)
+
+#         return x
+
+# Transformer version
 class TransformerGoal(Module):
     def __init__(self):
         super().__init__()
-        self.fc1 = nn.Bilinear(9, 9, 24) # (B, 9), (B, 9) -> (B, 24)
-        self.relu = nn.ReLU()
-        self.fc2 = nn.Linear(24, 24) # (B, 24) -> (B, 24)
+        self.pos_emb = PositionalEncoding(d_model=128, dropout=0.1, max_len=24)
+        self.up_x = nn.Linear(8, 64)
+        self.up_goal = nn.Linear(1, 64)
+        self.layer = nn.TransformerEncoderLayer(d_model=128, nhead=2, dim_feedforward=512)
+        self.transformer_encoder = nn.TransformerEncoder(self.layer, num_layers=3)
+        self.linear = nn.Linear(128, 12)
 
-    def forward(self, x_0, goal_data):
+    def forward(self, x_0, goal_point):
         x_0_pos = x_0[:, :, :2] # (B, 8, 2)
         x_0_pos = torch.nan_to_num(x_0_pos, nan=0.0)
-        gp = goal_data['goal_point'].squeeze(0) # (B, 2)
-        x_0_pos = torch.cat((x_0_pos, gp.unsqueeze(1)), dim=1) # (B, 9, 2)
-
-        xs = x_0_pos[:, :, 0].unsqueeze(2) # (B, 9, 1)
-        ys = x_0_pos[:, :, 1].unsqueeze(2) # (B, 9, 1)
         
-        xs = xs.view(xs.shape[0], -1) # (B, 9)
-        ys = ys.view(ys.shape[0], -1) # (B, 9)
+        # invert second and third dimensions
+        x_0_pos = x_0_pos.permute(0, 2, 1) # (B, 2, 8)
+        x_emb = self.up_x(x_0_pos) # (B, 2, 64)
 
-        x = self.fc1(xs, ys) # (B, 24)
-        x = self.relu(x) # (B, 24)
-        x = self.fc2(x) # (B, 24)
-        x = x.view(x.shape[0], 12, 2) # (B, 12, 2)
+        gp = goal_point.squeeze(0).unsqueeze(1).permute(0, 2, 1) # (B, 2, 1)
+        gp_emb = self.up_goal(gp) # (B, 2, 64)
 
+        x = torch.cat((x_emb, gp_emb), dim=2) # (B, 2, 128)
+        x = x.permute(1, 0, 2)
+        x = self.pos_emb(x) # (2, B, 128)
+        x = self.transformer_encoder(x) # (2, B, 128)
+        x = x.permute(1, 0, 2) # (B, 2, 128)
+        x = self.linear(x) # (B, 2, 12)
+        x = x.permute(0, 2, 1) # (B, 12, 2)
+        
         return x
+
 
 class VarianceSchedule(Module):
     """
@@ -357,9 +401,14 @@ class DiffusionTraj(Module):
         elif self.loss_type == 'simple':
             loss = self._loss_simple(out, e_rand)
             if self.use_goal:
-                out_goal_transformer = self.goal_net(history.to(x_0.device), goal_data) # (B, 12, 2)
-                loss_goal = self.loss_g(out_goal_transformer, x_0)
-                loss = loss + self.g_loss_lambda*loss_goal
+                # train the goal module
+                loss_goal = self._goal_bce_loss(goal_data['goal_logit_map'].to(x_0.device), goal_data['out_maps_gt_goal'].to(x_0.device))
+
+                # also train the parallel network
+                out_goal_transformer = self.goal_net(history.to(x_0.device), goal_data['goal_point'].detach()) # (B, 12, 2)
+                loss_goal_net = self.loss_g(out_goal_transformer, x_0)
+
+                loss = loss + self.g_loss_lambda*loss_goal + self.g_loss_lambda*loss_goal_net
             
         else:
             raise NotImplementedError('Loss type not implemented')
@@ -422,7 +471,7 @@ class DiffusionTraj(Module):
             else:
                 tr = traj[0]
                 if self.use_goal:
-                    out_goal_transformer = self.goal_net(history.to(context.device), goal_data)
+                    out_goal_transformer = self.goal_net(history.to(context.device), goal_data['goal_point'].detach())
                     tr = (tr + self.g_weight_samples*out_goal_transformer) / (1+self.g_weight_samples)
                 traj_list.append(tr)
         return torch.stack(traj_list)
