@@ -61,7 +61,11 @@ class TransformerGoal(Module):
 
     def forward(self, x_0, goal_point):
         x_0_pos = x_0[:, :, :2] # (B, 8, 2)
-        x_0_pos = torch.nan_to_num(x_0_pos, nan=0.0)
+        # x_0_pos = torch.nan_to_num(x_0_pos, nan=0.0)
+        # replace nans with first non nan of the tensor
+        nan_mask = torch.isnan(x_0_pos)
+        not_nan_mask = torch.logical_not(nan_mask)
+        x_0_pos[nan_mask] = torch.masked_select(x_0_pos, not_nan_mask)[0]
         
         # invert second and third dimensions
         x_0_pos = x_0_pos.permute(0, 2, 1) # (B, 2, 8)
