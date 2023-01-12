@@ -14,10 +14,10 @@ batch_size: 256
 eval_batch_size: 256
 k_eval: 25
 seed: 123
-eval_every: 5
+eval_every: 1
 
 # Testing
-eval_at: 1
+eval_at: 2
 eval_mode: False
 
 # Visualization

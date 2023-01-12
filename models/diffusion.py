@@ -358,7 +358,8 @@ class DiffusionTraj(Module):
         self.g_loss_lambda = g_loss_lambda
         if self.use_goal:
             self.goal_net = TransformerGoal()
-        self.loss_g = nn.MSELoss(reduction='mean')
+        # self.loss_g = nn.MSELoss(reduction='mean')
+        self.loss_g = nn.BCELoss(reduction='mean')
         self.g_weight_samples = g_weight_samples
 
     def get_loss(self, x_0, context, goal=None, t=None, history=None):
@@ -410,7 +411,7 @@ class DiffusionTraj(Module):
 
                 # also train the parallel network
                 out_goal_transformer = self.goal_net(history.to(x_0.device), goal_data['goal_point'].detach()) # (B, 12, 2)
-                loss_goal_net = self.loss_g(out_goal_transformer, x_0)
+                loss_goal_net = self.loss_g(torch.sigmoid(out_goal_transformer), torch.sigmoid(x_0))
 
                 loss = loss + self.g_loss_lambda*loss_goal + self.g_loss_lambda*loss_goal_net
             
