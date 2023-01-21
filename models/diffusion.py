@@ -268,9 +268,10 @@ class TransformerConcatLinear(Module):
                 out_chs=pred_len)
 
 
-    def forward(self, x, beta, context, goal, num_samples=1, iftest=False):
+    def forward(self, x, beta, context, goal, num_samples=1, iftest=False, pretrain=False, betas=True):
         batch_size = x.size(0)
-        beta = beta.view(batch_size, 1, 1)          # (B, 1, 1)
+        if betas:
+            beta = beta.view(batch_size, 1, 1)          # (B, 1, 1)
         context = context.view(batch_size, 1, -1)   # (B, 1, F)
         
         # GOAL
@@ -300,7 +301,7 @@ class TransformerConcatLinear(Module):
 
         goal_stuff = {
             'goal_logit_map': goal_logit_map_start,
-            'goal_point': x_last if not iftest else goal_point_start[:, 0],
+            'goal_point': x_last if (pretrain or not iftest) else goal_point_start[:, 0],
             'out_maps_gt_goal': out_maps_gt_goal
         }
 
@@ -309,6 +310,9 @@ class TransformerConcatLinear(Module):
 
         all_goal_stuff = {k: torch.stack([d[k] for d in all_goal_stuff])
                            for k in all_goal_stuff[0].keys()}
+
+        if iftest and pretrain:
+            return (0, all_goal_stuff)
 
         time_emb = torch.cat([beta, torch.sin(beta), torch.cos(beta)], dim=-1)  # (B, 1, 3)
         ctx_emb = torch.cat([time_emb, context], dim=-1)    # (B, 1, F+3)
@@ -343,7 +347,8 @@ class DiffusionTraj(Module):
                  ensemble_hybrid_steps=10,
                  use_goal=False,
                  g_loss_lambda=1,
-                 g_weight_samples=1
+                 g_weight_samples=1,
+                 pretrain_transformer=False
                  ):
         super().__init__()
         self.net = net
@@ -361,6 +366,7 @@ class DiffusionTraj(Module):
         # self.loss_g = nn.MSELoss(reduction='mean')
         self.loss_g = nn.BCELoss(reduction='mean')
         self.g_weight_samples = g_weight_samples
+        self.pretrain_transformer = pretrain_transformer
 
     def get_loss(self, x_0, context, goal=None, t=None, history=None):
         
@@ -378,7 +384,7 @@ class DiffusionTraj(Module):
         c1 = torch.sqrt(1 - alpha_bar).view(-1, 1, 1).to(x_0.device)   # (B, 1, 1)
         e_rand = torch.randn_like(x_0).to(x_0.device)  # (B, N, d)
 
-        out, goal_data = self.net(c0 * x_0 + c1 * e_rand, beta=beta, context=context, goal=goal if self.use_goal else None)
+        out, goal_data = self.net(c0 * x_0 + c1 * e_rand, beta=beta, context=context, goal=goal if self.use_goal else None, pretrain=self.pretrain_transformer)
 
         # feed to the second transformer: first 8 (history) of x_0 and goal_data
         # the second transformer should output (12, 2) tensor (future timesteps x, y)
@@ -410,18 +416,31 @@ class DiffusionTraj(Module):
                 loss_goal = self._goal_bce_loss(goal_data['goal_logit_map'].to(x_0.device), goal_data['out_maps_gt_goal'].to(x_0.device))
 
                 # also train the parallel network
-                out_goal_transformer = self.goal_net(history.to(x_0.device), goal_data['goal_point'].detach()) # (B, 12, 2)
-                loss_goal_net = self.loss_g(torch.sigmoid(out_goal_transformer), torch.sigmoid(x_0))
+                if self.pretrain_transformer:
+                    out_goal_transformer = self.goal_net(history.to(x_0.device), goal_data['goal_point'].detach()) # (B, 12, 2)
+                    loss_goal_net = self.loss_g(torch.sigmoid(out_goal_transformer), torch.sigmoid(x_0))
+                    loss = loss_goal_net
 
-                loss = loss + self.g_loss_lambda*loss_goal + self.g_loss_lambda*loss_goal_net
+                else:
+                    loss = loss + self.g_loss_lambda*loss_goal #+ self.g_loss_lambda*loss_goal_net
             
         else:
             raise NotImplementedError('Loss type not implemented')
 
         return loss
 
-    def sample(self, num_points, context, sample, bestof, point_dim=2, flexibility=0.0, ret_traj=False, goal=None, history=None):
+    def sample(self, num_points, context, sample, bestof, point_dim=2, flexibility=0.0, ret_traj=False, goal=None, history=None, future=None):
         traj_list = []
+
+        if self.pretrain_transformer:
+            for i in range(sample):
+                batch_size = context.size(0)
+                out, goal_data = self.net(future, beta=torch.ones((1)), context=context, goal=goal, num_samples=sample, iftest=True, pretrain=True, betas=False)
+                out_goal_transformer = self.goal_net(history.to(context.device), goal_data['goal_point'].detach())
+                tr = out_goal_transformer
+                traj_list.append(tr)
+            return torch.stack(traj_list, dim=1)
+
         for i in range(sample):
             batch_size = context.size(0)
             if bestof:
@@ -439,6 +458,7 @@ class DiffusionTraj(Module):
 
                 x_t = traj[t]
                 beta = self.var_sched.betas[[t]*batch_size]
+                print(beta.shape)
                 out, goal_data = self.net(x_t, beta=beta, context=context, goal=goal if self.use_goal else None, num_samples=sample, iftest=True)
 
                 if self.learn_sigmas:

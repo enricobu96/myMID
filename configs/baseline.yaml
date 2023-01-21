@@ -1,6 +1,8 @@
 ############ MID Config #############
 # Optimizer
 lr: 0.001
+pretrain_transformer: True
+pretrain_epochs: 90
 
 # Dataset
 data_dir: processed_data_noise # The path with the directory with XXX.pkl
@@ -79,5 +81,5 @@ scene_freq_mult_viz: False
 no_edge_encoding: False
 
 # Data Parameters
-device: cuda
-eval_device: cuda
+device: cpu
+eval_device: cpu
