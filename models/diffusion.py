@@ -25,7 +25,7 @@ class TransformerGoal(Module):
     """
     def __init__(self):
         super().__init__()
-        self.pos_emb = PositionalEncoding(d_model=128, dropout=0.1, max_len=24)
+        self.pos_emb = PositionalEncoding(d_model=128, dropout=0.9, max_len=24)
         self.up_x = nn.Linear(8, 64)
         self.up_goal = nn.Linear(1, 64)
         self.layer = nn.TransformerEncoderLayer(d_model=128, nhead=2, dim_feedforward=512)
@@ -335,8 +335,8 @@ class DiffusionTraj(Module):
         self.g_loss_lambda = g_loss_lambda
         if self.use_goal:
             self.goal_net = TransformerGoal()
-            # self.loss_g = nn.MSELoss(reduction='mean')
-            self.loss_g = nn.BCELoss(reduction='mean')
+            self.loss_g = nn.MSELoss(reduction='mean')
+            # self.loss_g = nn.BCELoss(reduction='mean')
             self.g_weight_samples = g_weight_samples
             self.pretrain_transformer = pretrain_transformer
 
@@ -419,6 +419,7 @@ class DiffusionTraj(Module):
         ):
 
         traj_list = []
+        trans_traj_list = []
 
         """
         Test for the pretraining of the second transformer:
@@ -429,11 +430,20 @@ class DiffusionTraj(Module):
         if self.pretrain_transformer:
             for i in range(sample):
                 batch_size = context.size(0)
-                out, goal_data = self.net(future, beta=torch.ones((1)), context=context, goal=goal, num_samples=sample, iftest=True, pretrain=True, betas=False)
+                out, goal_data = self.net(
+                    future.to(context.device),
+                    beta=torch.ones((1)),
+                    context=context,
+                    goal=goal,
+                    num_samples=sample,
+                    iftest=True,
+                    pretrain=True,
+                    betas=False
+                    )
                 out_goal_transformer = self.goal_net(history.to(context.device), goal_data['goal_point'].detach())
                 tr = out_goal_transformer
                 traj_list.append(tr)
-            return torch.stack(traj_list, dim=1)
+            return torch.stack(traj_list)
 
         for i in range(sample):
             batch_size = context.size(0)
@@ -452,7 +462,6 @@ class DiffusionTraj(Module):
 
                 x_t = traj[t]
                 beta = self.var_sched.betas[[t]*batch_size]
-                print(beta.shape)
                 out, goal_data = self.net(x_t, beta=beta, context=context, goal=goal if self.use_goal else None, num_samples=sample, iftest=True)
 
                 if self.learn_sigmas:
@@ -496,9 +505,10 @@ class DiffusionTraj(Module):
                     TODO: load the pre-trained model
                     """
                     out_goal_transformer = self.goal_net(history.to(context.device), goal_data['goal_point'].detach())
-                    tr = (tr + self.g_weight_samples*out_goal_transformer) / (1+self.g_weight_samples)
+
                 traj_list.append(tr)
-        return torch.stack(traj_list)
+                trans_traj_list.append(out_goal_transformer)
+        return torch.stack(traj_list), torch.stack(trans_traj_list)
     
     """
     Functions used to compute the vlb loss for learning variances
