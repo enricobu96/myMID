@@ -268,6 +268,10 @@ class MID():
 
                 self.model.train()
 
+            if self.config.pretrain_transformer and (epoch-1)%self.config.pretrain_epochs == 0:
+                print('Saved last pretrained transformer model')
+                exit()
+
         if self.config.save_losses_plots:
             plot_filename = 'xy_'
             if self.config.loss_type == 'hybrid':

@@ -4,8 +4,9 @@ import torch.nn as nn
 from .encoders.trajectron import Trajectron
 from .encoders import dynamics as dynamic_module
 import models.diffusion as diffusion
-from models.diffusion import DiffusionTraj,VarianceSchedule
+from models.diffusion import DiffusionTraj,VarianceSchedule,TransformerGoal
 import pdb
+import os.path as osp
 
 class AutoEncoder(Module):
     """
@@ -29,6 +30,14 @@ class AutoEncoder(Module):
         self.config = config
         self.encoder = encoder
         self.diffnet = getattr(diffusion, config.diffnet)
+
+        saved_model = None
+        if not self.config.pretrain_transformer and \
+            self.config.use_goal and \
+                osp.exists('./pretrained_models/goal_transformer.pt'):
+
+            saved_model = TransformerGoal()
+            saved_model.load_state_dict(torch.load('./pretrained_models/goal_transformer.pt'))
 
         self.diffusion = DiffusionTraj(
             net = self.diffnet(point_dim=2,
@@ -60,7 +69,8 @@ class AutoEncoder(Module):
             use_goal=self.config.use_goal,
             g_loss_lambda=self.config.g_loss_lambda,
             g_weight_samples=self.config.g_weight_samples,
-            pretrain_transformer=self.config.pretrain_transformer
+            pretrain_transformer=self.config.pretrain_transformer,
+            saved_model=saved_model
         )
 
     def encode(self, batch,node_type):
@@ -83,12 +93,15 @@ class AutoEncoder(Module):
             history=batch[1],
             future=batch[2]
             )
+        
+        if self.config.pretrain_transformer:
+            return goal_trajs.cpu().detach().numpy()
             
         predicted_y_pos = dynamics.integrate_samples(predicted_y_vel) \
             if not self.config.pretrain_transformer \
             else predicted_y_vel
 
-        if self.config.use_goal:
+        if self.config.use_goal and goal_trajs is not None:
             predicted_y_pos = (predicted_y_pos + goal_trajs) / 2
         return predicted_y_pos.cpu().detach().numpy()
 

@@ -25,7 +25,7 @@ class TransformerGoal(Module):
     """
     def __init__(self):
         super().__init__()
-        self.pos_emb = PositionalEncoding(d_model=128, dropout=0.9, max_len=24)
+        self.pos_emb = PositionalEncoding(d_model=128, dropout=0.2, max_len=24)
         self.up_x = nn.Linear(8, 64)
         self.up_goal = nn.Linear(1, 64)
         self.layer = nn.TransformerEncoderLayer(d_model=128, nhead=2, dim_feedforward=512)
@@ -320,7 +320,8 @@ class DiffusionTraj(Module):
                  use_goal=False,
                  g_loss_lambda=1,
                  g_weight_samples=1,
-                 pretrain_transformer=False
+                 pretrain_transformer=False,
+                 saved_model=None
                  ):
         super().__init__()
         self.net = net
@@ -335,10 +336,11 @@ class DiffusionTraj(Module):
         self.g_loss_lambda = g_loss_lambda
         if self.use_goal:
             self.goal_net = TransformerGoal()
-            self.loss_g = nn.MSELoss(reduction='mean')
+            self.loss_g = nn.MSELoss(reduction='sum')
             # self.loss_g = nn.BCELoss(reduction='mean')
             self.g_weight_samples = g_weight_samples
             self.pretrain_transformer = pretrain_transformer
+            self.saved_model = saved_model
 
     def get_loss(self, x_0, context, goal=None, t=None, history=None):
         
@@ -394,9 +396,9 @@ class DiffusionTraj(Module):
                     out_goal_transformer = self.goal_net(history.to(x_0.device), goal_data['goal_point'].detach()) # (B, 12, 2)
                     loss_goal_net = self.loss_g(torch.sigmoid(out_goal_transformer), torch.sigmoid(x_0))
                     loss = loss_goal_net
+                    torch.save(self.goal_net.state_dict(), './pretrained_models/goal_transformer.pt')
 
                 else:
-                    # TODO: load the pre-trained model
                     loss = loss + self.g_loss_lambda*loss_goal
             
         else:
@@ -443,7 +445,7 @@ class DiffusionTraj(Module):
                 out_goal_transformer = self.goal_net(history.to(context.device), goal_data['goal_point'].detach())
                 tr = out_goal_transformer
                 traj_list.append(tr)
-            return torch.stack(traj_list)
+            return None, torch.stack(traj_list)
 
         for i in range(sample):
             batch_size = context.size(0)
@@ -462,7 +464,14 @@ class DiffusionTraj(Module):
 
                 x_t = traj[t]
                 beta = self.var_sched.betas[[t]*batch_size]
-                out, goal_data = self.net(x_t, beta=beta, context=context, goal=goal if self.use_goal else None, num_samples=sample, iftest=True)
+                out, goal_data = self.net(
+                    x_t,
+                    beta=beta,
+                    context=context,
+                    goal=goal if self.use_goal else None,
+                    num_samples=sample,
+                    iftest=True
+                    )
 
                 if self.learn_sigmas:
                     """
@@ -498,13 +507,14 @@ class DiffusionTraj(Module):
                 traj_list.append(traj)
             else:
                 tr = traj[0]
-                if self.use_goal:
+                if self.use_goal and self.saved_model:
                     """
                     If using goal, give the predicted goal point and the history to the second transformer, then average the
                     trajectories from the two networks.
-                    TODO: load the pre-trained model
                     """
-                    out_goal_transformer = self.goal_net(history.to(context.device), goal_data['goal_point'].detach())
+                    out_goal_transformer = self.saved_model(history.to(context.device).detach(), goal_data['goal_point'].detach())
+                else:
+                    out_goal_transformer = 0
 
                 traj_list.append(tr)
                 trans_traj_list.append(out_goal_transformer)

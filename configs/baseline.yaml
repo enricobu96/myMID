@@ -2,7 +2,7 @@
 # Optimizer
 lr: 0.001
 pretrain_transformer: False
-pretrain_epochs: 90
+pretrain_epochs: 1
 
 # Dataset
 data_dir: processed_data_noise # The path with the directory with XXX.pkl
@@ -19,7 +19,7 @@ seed: 123
 eval_every: 1
 
 # Testing
-eval_at: 2
+eval_at: 1
 eval_mode: False
 
 # Visualization
