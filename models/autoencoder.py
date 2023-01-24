@@ -47,6 +47,12 @@ class AutoEncoder(Module):
                 longterm=self.config.sdd_longterm,
                 dataset=self.config['dataset'],
                 learn_sigmas=self.config.learn_sigmas,
+                use_goal=self.config.use_goal,
+                num_image_channels=self.config.g_image_channels,
+                obs_len=self.config.g_obs_len,
+                pred_len=self.config.g_pred_len,
+                sampler_temp=self.config.g_sampler_temperature,
+                use_ttst=self.config.g_use_ttst,
             ),
             var_sched = VarianceSchedule(
                 num_steps=100,
@@ -72,10 +78,10 @@ class AutoEncoder(Module):
         return z
 
     def generate(self, batch, node_type, num_points, sample, bestof,flexibility=0.0, ret_traj=False):
-
+        goal = batch[-1]
         dynamics = self.encoder.node_models_dict[node_type].dynamic
         encoded_x = self.encoder.get_latent(batch, node_type)
-        
+
         # Note: the future in sample is used only for pretraining the goal transformer
         predicted_y_vel, goal_trajs =  self.diffusion.sample(
             num_points,
@@ -105,7 +111,7 @@ class AutoEncoder(Module):
          neighbors_data_st,
          neighbors_edge_value,
          robot_traj_st_t,
-         map) = batch
+         goal) = batch
 
         feat_x_encoded = self.encode(batch,node_type) # B * 64
 

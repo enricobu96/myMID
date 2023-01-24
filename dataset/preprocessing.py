@@ -166,33 +166,20 @@ def get_node_timestep_data(env, scene, t, node, state, pred_state,
         robot_traj = robot.get(timestep_range_r, state[robot_type], padding=0.0)
         robot_traj_st_t = get_relative_robot_traj(env, state, x_node, robot_traj, node.type, robot_type)
 
-    # Map
-    map_tuple = None
-    if hyperparams['use_map_encoding']:
-        if node.type in hyperparams['map_encoder']:
-            if node.non_aug_node is not None:
-                x = node.non_aug_node.get(np.array([t]), state[node.type])
-            me_hyp = hyperparams['map_encoder'][node.type]
-            if 'heading_state_index' in me_hyp:
-                heading_state_index = me_hyp['heading_state_index']
-                # We have to rotate the map in the opposit direction of the agent to match them
-                if type(heading_state_index) is list:  # infer from velocity or heading vector
-                    heading_angle = -np.arctan2(x[-1, heading_state_index[1]],
-                                                x[-1, heading_state_index[0]]) * 180 / np.pi
-                else:
-                    heading_angle = -x[-1, heading_state_index] * 180 / np.pi
-            else:
-                heading_angle = None
+    timestep_range_history = np.array([t - max_ht, t])
+    obs_traj_maps = node.get_traj_map(timestep_range_history)
 
-            scene_map = scene.map[node.type]
-            map_point = x[-1, :2]
+    timestep_range_maps_gt = np.array([t + 1, t + max_ft])
+    out_maps_gt_goal = node.get_traj_map(timestep_range_maps_gt)
 
-
-            patch_size = hyperparams['map_encoder'][node.type]['patch_size']
-            map_tuple = (scene_map, map_point, heading_angle, patch_size)
+    goal = {
+        'semantic_pred': scene.semantic_map_pred,
+        'obs_traj_maps': obs_traj_maps,
+        'out_maps_gt_goal': out_maps_gt_goal
+    }
 
     return (first_history_index, x_t, y_t, x_st_t, y_st_t, neighbors_data_st,
-            neighbors_edge_value, robot_traj_st_t, map_tuple)
+            neighbors_edge_value, robot_traj_st_t, goal)
 
 
 def get_timesteps_data(env, scene, t, node_type, state, pred_state,
@@ -220,6 +207,7 @@ def get_timesteps_data(env, scene, t, node_type, state, pred_state,
     batch = list()
     nodes = list()
     out_timesteps = list()
+    goals = list()
     for timestep in nodes_per_ts.keys():
             scene_graph = scene.get_scene_graph(timestep,
                                                 env.attention_radius,
@@ -229,9 +217,11 @@ def get_timesteps_data(env, scene, t, node_type, state, pred_state,
             for node in present_nodes:
                 nodes.append(node)
                 out_timesteps.append(timestep)
-                batch.append(get_node_timestep_data(env, scene, timestep, node, state, pred_state,
-                                                    edge_types, max_ht, max_ft, hyperparams,
-                                                    scene_graph=scene_graph))
+                batch.append(get_node_timestep_data(
+                        env, scene, timestep, node, state, pred_state,
+                        edge_types, max_ht, max_ft, hyperparams,
+                        scene_graph=scene_graph
+                        ))
     if len(out_timesteps) == 0:
         return None
-    return collate(batch), nodes, out_timesteps
+    return collate(batch), nodes, out_timesteps, goals

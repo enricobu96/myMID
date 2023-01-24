@@ -76,7 +76,6 @@ class NodeTypeDataset(data.Dataset):
         (scene, t, node) = self.index[i]
 
         if self.augment:
-            scene = scene.augment()
             node = scene.get_node_by_id(node.id)
 
         return get_node_timestep_data(self.env, scene, t, node, self.state, self.pred_state,
