@@ -369,21 +369,43 @@ class DiffusionTraj(Module):
         if self.loss_type == 'hybrid':
             loss = self._loss_hybrid(x_0, out, t, c0, c1, e_rand, context)
             if self.use_goal:
-                out_goal_transformer = self.goal_net(history, goal_data) # (B, 12, 2)
-                # TODO: implement the goal (if working on simple loss)
-                loss = loss
+                loss_goal = self._goal_bce_loss(goal_data['goal_logit_map'].to(x_0.device), goal_data['out_maps_gt_goal'].to(x_0.device))
+                # Train the second transformer -> pretraining
+                if self.pretrain_transformer:
+                    out_goal_transformer = self.goal_net(history.to(x_0.device), goal_data['goal_point'].detach()) # (B, 12, 2)
+                    loss_goal_net = self.loss_g(torch.sigmoid(out_goal_transformer), torch.sigmoid(x_0))
+                    loss = loss_goal_net
+                    torch.save(self.goal_net.state_dict(), './pretrained_models/goal_transformer.pt')
+                else:
+                    loss = loss + self.g_loss_lambda*loss_goal
             
         elif self.loss_type == 'vlb':
             if self.ensemble_loss:
                 loss = self._loss_ensemble(x_0, out, t, c0, c1, e_rand, context)
                 if self.use_goal:
-                    # TODO: implement the goal (if working on simple loss)
-                    loss = loss
+                    loss_goal = self._goal_bce_loss(goal_data['goal_logit_map'].to(x_0.device), goal_data['out_maps_gt_goal'].to(x_0.device))
+                    # Train the second transformer -> pretraining
+                    if self.pretrain_transformer:
+                        out_goal_transformer = self.goal_net(history.to(x_0.device), goal_data['goal_point'].detach()) # (B, 12, 2)
+                        loss_goal_net = self.loss_g(torch.sigmoid(out_goal_transformer), torch.sigmoid(x_0))
+                        loss = loss_goal_net
+                        torch.save(self.goal_net.state_dict(), './pretrained_models/goal_transformer.pt')
+
+                    else:
+                        loss = loss + self.g_loss_lambda*loss_goal
             else:
                 loss = self._loss_vlb(x_0, out, t, c0, c1, e_rand, context)
                 if self.use_goal:
-                    # TODO: implement the goal (if working on simple loss)
-                    loss = loss
+                    loss_goal = self._goal_bce_loss(goal_data['goal_logit_map'].to(x_0.device), goal_data['out_maps_gt_goal'].to(x_0.device))
+                    # Train the second transformer -> pretraining
+                    if self.pretrain_transformer:
+                        out_goal_transformer = self.goal_net(history.to(x_0.device), goal_data['goal_point'].detach()) # (B, 12, 2)
+                        loss_goal_net = self.loss_g(torch.sigmoid(out_goal_transformer), torch.sigmoid(x_0))
+                        loss = loss_goal_net
+                        torch.save(self.goal_net.state_dict(), './pretrained_models/goal_transformer.pt')
+
+                    else:
+                        loss = loss + self.g_loss_lambda*loss_goal
                 
         elif self.loss_type == 'simple':
             loss = self._loss_simple(out, e_rand)
@@ -606,7 +628,7 @@ class DiffusionTraj(Module):
             x_start=x_0[mask_for_vlb],
             x_t=c0[mask_for_vlb] * x_0[mask_for_vlb] + c1[mask_for_vlb] * e_rand[mask_for_vlb],
             t=tt[mask_for_vlb].tolist(),
-            pmc1=self.var_sched.posterior_mean_coef1, # not sure about this, TODO check
+            pmc1=self.var_sched.posterior_mean_coef1,
             pmc2=self.var_sched.posterior_mean_coef2,
             plvc=self.var_sched.posterior_log_variance_clipped
             )
