@@ -176,4 +176,3 @@ docs/*
 wandb/
 images/
 !images/.gitkeep
-test.ipynb

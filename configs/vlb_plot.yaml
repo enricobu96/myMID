@@ -1,8 +1,6 @@
 ############ MID Config #############
 # Optimizer
-lr: 0.001
-pretrain_transformer: False
-pretrain_epochs: 1
+lr: 0.0001
 
 # Dataset
 data_dir: processed_data_noise # The path with the directory with XXX.pkl
@@ -11,12 +9,12 @@ data_dir: processed_data_noise # The path with the directory with XXX.pkl
 diffnet: TransformerConcatLinear # Type of diffnet
 encoder_dim: 256 # Encoder dimension
 tf_layer: 3 # Number of layers of the transformer
-epochs: 1
+epochs: 90
 batch_size: 256
 eval_batch_size: 256
 k_eval: 25
 seed: 123
-eval_every: 2
+eval_every: 91
 
 # Testing
 eval_at: 2
@@ -34,27 +32,17 @@ variance_sched: cosine
 cosine_sched: sigmoid
 
 # Loss function. This can be simple (MSE), hybrid (L_simple+lambda*L_vlb) or vlb (L_vlb)
-loss_type: simple
+loss_type: vlb
 ensemble_loss: False # this should work only when vlb is selected to be the loss type
 ensemble_hybrid_steps: 10
 
 # Learn variances
-learn_sigmas: False
+learn_sigmas: True
 learned_range: True
 lambda_vlb: 0.001
 
 # Reduce gradient noise
 reduce_grad_noise: False
-
-# Goal module
-use_goal: True
-g_image_channels: 6
-g_obs_len: 8
-g_pred_len: 12
-g_sampler_temperature: 1
-g_use_ttst: True
-g_loss_lambda: 1
-g_weight_samples: 1
 
 ############### Trajectron++ Config #################
 # Misc

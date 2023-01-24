@@ -1,87 +1,22 @@
 import torch
 import numpy as np
 from dataset.homography_warper import get_rotation_matrix2d, warp_affine_crop
-from PIL import Image
-import cv2
-from collections import OrderedDict
-import torchvision.transforms as TT
-import math
 
 class Map(object):
-    def __init__(self, data, homography=None, description=None, scene=None):
-        self.data = np.asarray(Image.open(data))
-        self.homography = np.loadtxt(homography)
-        self.homography_inv = np.linalg.inv(self.homography)
+    def __init__(self, data, homography=None, description=None):
+        # Contains the path to the image
+        self.data = data
+        self.homography = homography
         self.description = description
-        self.scene = scene
 
     def as_image(self):
-        return self.data
-    
-    def translate_trajectories(self, trajectories):
-        trajs = trajectories.copy()
-        if self.scene == 'sdd':
-            return trajs
-        elif self.scene in ['eth', 'hotel']:
-            trajs = self._world_to_pixel(trajs, self.homography_inv)
-            trajs = np.flip(trajs, axis=1)
-            return trajs
-        elif self.scene in ['univ', 'zara1', 'zara2']:
-            return self._world_to_pixel(trajs, self.homography_inv)
-        else:
-            print('Unknown scene')
-            return None
-
-    def _world_to_pixel(self, world_pts, homography):
-        world_pts = np.concatenate(
-            (world_pts, np.ones((len(world_pts), 1))), axis=1)
-        pixel_coord = np.dot(homography, world_pts.T).T
-        pixel_coord = pixel_coord[:, 0:2] / pixel_coord[:, 2][:, np.newaxis]
-        pixel_coord = pixel_coord
-        return pixel_coord
+        return str(self.data)
 
     def get_cropped_maps(self, world_pts, patch_size, rotation=None, device='cpu'):
         raise NotImplementedError
 
     def to_map_points(self, scene_pts):
         raise NotImplementedError
-
-class SemanticMap(object):
-    def __init__(self, data, homography=None, description=None, scene=None):
-
-        self.semantic_classes = OrderedDict([
-            ('unlabeled', 'gray'),
-            ('pavement', 'blue'),
-            ('road', 'red'),
-            ('structure', 'orange'),
-            ('terrain', 'cyan'),
-            ('tree', 'green'),
-        ])
-        sem_map = cv2.imread(data, flags=0)
-        num_classes = len(self.semantic_classes)
-        sem_map = [(sem_map == v) for v in range(num_classes)]
-        sem_map = np.stack(sem_map, axis=-1).astype(int)
-        self.data = sem_map
-        self.tensor_image = self._create_tensor_image(down_factor=8)
-        self.description = description
-        self.scene = scene
-    
-    def as_image(self):
-        return self.data
-
-    def get_tensor_image(self):
-        return self.tensor_image
-
-
-    def _create_tensor_image(self, down_factor=1):
-        img = TT.functional.to_tensor(self.data)
-        C, H, W = img.shape
-        new_heigth = int(H / down_factor)
-        new_width = int(W / down_factor)
-        tensor_image = TT.functional.resize(img, (new_heigth, new_width),
-                                            interpolation=TT.InterpolationMode.NEAREST)
-        return tensor_image
-
 
 class GeometricMap(Map):
     """
@@ -243,6 +178,7 @@ class GeometricMap(Map):
             map_points = map_points.reshape(org_shape)
         return map_points
 
-class ImageMap(Map):
+
+class ImageMap(Map):  # TODO Implement for image maps -> watch flipped coordinate system
     def __init__(self):
         raise NotImplementedError

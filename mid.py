@@ -23,10 +23,8 @@ from utils.trajectron_hypers import get_traj_hypers
 import evaluation
 
 import wandb
-from evaluation.evaluation import compute_kde_nll
 from evaluation.trajectory_utils import prediction_output_to_trajectories
 from evaluation.visualization.visualization import plot_wandb
-from scipy.stats import gaussian_kde
 
 from utils.resample import UniformSampler, LossSecondMomentResampler
 
@@ -103,13 +101,11 @@ class MID():
             i = 0
             log_loss = []
             log_fake_loss = []
-            kde_lls = []
             fake_loss = nn.MSELoss(reduction='mean')
         for epoch in range(1, self.config.epochs + 1):
             self.train_dataset.augment = self.config.augment
             for node_type, data_loader in self.train_data_loader.items():
                 pbar = tqdm(data_loader, ncols=80)
-                batch_acc = 0
                 for batch in pbar:
                     # Resampling stuff
                     t_idx, weights = self.schedule_resampler.sample(
@@ -117,8 +113,6 @@ class MID():
                         device=self.config.device
                         )
                     self.optimizer.zero_grad()
-                    batch_acc += len(batch[0])
-
                     losses = self.model.get_loss(batch, node_type)
                     
                     if not self.config.reduce_grad_noise:
@@ -132,33 +126,12 @@ class MID():
                             it_steps.append(i)
                             log_loss.append(np.log(train_loss.item()))
                             i += 1
-                            traj_pred = self.model.generate(batch, node_type, num_points=self.hyperparams['prediction_horizon'], sample=1,bestof=False)
-                            # Compute KDE
-                            num_batches = traj_pred[0].shape[0]
-                            num_timesteps = traj_pred[0].shape[1]
-                            kde_ll = 0.
-                            log_pdf_lower_bound = -20
-
-
-                            for batch_num in range(num_batches):
-                                for t in range(num_timesteps):
-                                    try:
-                                        kde = gaussian_kde(traj_pred[0][batch_num, t, :].T)
-                                        pdf = np.clip(kde.logpdf(batch[2][batch_num, t, :].cpu().numpy().T), log_pdf_lower_bound, np.inf)[0]
-                                        kde_ll += pdf / (num_batches * num_timesteps)
-                                    except np.linalg.LinAlgError:
-                                        kde_ll = np.nan
-                                    except ValueError:
-                                        kde_ll = np.nan
-
-                            kde_ll = -kde_ll
-                            # Compute fake loss
+                            traj_pred = self.model.generate(batch, node_type, num_points=self.hyperparams['prediction_horizon'], sample=1,bestof=True)
                             traj_pred = torch.FloatTensor(traj_pred[0])
                             traj_pred[0] = torch.FloatTensor(traj_pred[0])
                             fake_loss_res = fake_loss(traj_pred, batch[2])
                             log_fake_loss.append(np.log(fake_loss_res.item()))
-                            kde_lls.append(kde_ll)
-                        pbar.set_description(f"Epoch {epoch}, {node_type} MSE: {train_loss.item():.2f} FAKE_LOSS: {fake_loss_res.item():.2f} KDE: {kde_ll:.2f}")
+                        pbar.set_description(f"Epoch {epoch}, {node_type} MSE: {train_loss.item():.2f} FAKE_LOSS: {fake_loss_res.item():.2f}")
                     else:
                         pbar.set_description(f"Epoch {epoch}, {node_type} MSE: {train_loss.item():.2f}")
                     train_loss.backward()
@@ -196,7 +169,8 @@ class MID():
                         test_batch = batch[0]
                         nodes = batch[1]
                         timesteps_o = batch[2]
-                        traj_pred = self.model.generate(test_batch, node_type, num_points=ph, sample=20, bestof=True) # B * 20 * 12 * 2
+                        traj_pred = self.model.generate(test_batch, node_type, num_points=ph, sample=20,bestof=True) # B * 20 * 12 * 2
+
                         predictions = traj_pred
                         predictions_dict = {}
                         for i, ts in enumerate(timesteps_o):
@@ -289,7 +263,6 @@ class MID():
             df['iterations'] = it_steps
             df['log_loss'] = log_loss
             df['log_fake_loss'] = log_fake_loss
-            df['kde_ll'] = kde_lls
 
             df.to_csv('docs/plot_losses/'+plot_filename+'.csv', index=False)
 
@@ -331,6 +304,7 @@ class MID():
                     nodes = batch[1]
                     timesteps_o = batch[2]
                     traj_pred = self.model.generate(test_batch, node_type, num_points=ph, sample=20,bestof=True) # B * 20 * 12 * 2
+
                     predictions = traj_pred
                     predictions_dict = {}
                     for i, ts in enumerate(timesteps_o):
@@ -366,7 +340,7 @@ class MID():
                         except OSError:
                             if not os.path.isdir('images'):
                                 raise
-                        plt.savefig('images/'+self.config["dataset"]+'_test_traj_epoch'+str(epoch)+'_scene'+str(sc)+'_it'+str(j)+'.png', bbox_inches='tight')
+                        plt.savefig('images/'+self.config["dataset"]+'_test_traj_epoch'+str(epoch)+'_scene'+str(sc)+'_it'+str(j)+'.png')
                         wandb.log({"train/test_image": wandb.Image(fig), "scene": str(sc)}, step=epoch)
                         sc += 1
                         plt.close()
@@ -533,6 +507,7 @@ class MID():
         for attention_radius_override in config.override_attention_radius:
             node_type1, node_type2, attention_radius = attention_radius_override.split(' ')
             train_env.attention_radius[(node_type1, node_type2)] = float(attention_radius)
+
 
         self.train_scenes = self.train_env.scenes
         self.train_scenes_sample_probs = self.train_env.scenes_freq_mult_prop if config.scene_freq_mult_train else None
