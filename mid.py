@@ -268,7 +268,7 @@ class MID():
 
                 self.model.train()
 
-            if self.config.pretrain_transformer and (epoch+1)%self.config.pretrain_epochs == 0:
+            if self.config.pretrain_transformer and epoch%self.config.pretrain_epochs == 0:
                 print('Saved last pretrained transformer model')
                 exit()
 

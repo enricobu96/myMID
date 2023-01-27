@@ -3,6 +3,7 @@ from torch.nn import Module
 import torch.nn as nn
 from .encoders.trajectron import Trajectron
 from .encoders import dynamics as dynamic_module
+from .goal.sar import TransformerGoalSAR
 import models.diffusion as diffusion
 from models.diffusion import DiffusionTraj,VarianceSchedule,TransformerGoal
 import pdb
@@ -36,7 +37,7 @@ class AutoEncoder(Module):
             self.config.use_goal and \
                 osp.exists('./pretrained_models/goal_transformer.pt'):
 
-            saved_model = TransformerGoal()
+            saved_model = TransformerGoalSAR()
             saved_model.load_state_dict(torch.load('./pretrained_models/goal_transformer.pt'))
 
         self.diffusion = DiffusionTraj(

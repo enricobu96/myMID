@@ -8,7 +8,7 @@ import pdb
 from .diffusion_utils import _extract_into_tensor, _vb_terms_bpd, mean_flat
 from .goal.unet import UNet
 from .goal.sampling_2d_map import TTST_test_time_sampling_trick, sampling
-
+from .goal.sar import TransformerGoalSAR
 from matplotlib import pyplot as plt
 
 class TransformerGoal(Module):
@@ -335,8 +335,8 @@ class DiffusionTraj(Module):
         self.use_goal = use_goal
         self.g_loss_lambda = g_loss_lambda
         if self.use_goal:
-            self.goal_net = TransformerGoal()
-            self.loss_g = nn.MSELoss(reduction='sum')
+            self.goal_net = TransformerGoalSAR()
+            self.loss_g = nn.MSELoss(reduction='mean')
             # self.loss_g = nn.BCELoss(reduction='mean')
             self.g_weight_samples = g_weight_samples
             self.pretrain_transformer = pretrain_transformer
@@ -415,8 +415,10 @@ class DiffusionTraj(Module):
 
                 # Train the second transformer -> pretraining
                 if self.pretrain_transformer:
-                    out_goal_transformer = self.goal_net(history.to(x_0.device), goal_data['goal_point'].detach()) # (B, 12, 2)
-                    loss_goal_net = self.loss_g(torch.sigmoid(out_goal_transformer), torch.sigmoid(x_0))
+                    #out_goal_transformer = self.goal_net(history.to(x_0.device), goal_data['goal_point'].detach()) # (B, 12, 2)
+                    out_goal_transformer = self.goal_net(history.to(x_0.device), x_0, goal_data)
+                    # loss_goal_net = self.loss_g(torch.sigmoid(out_goal_transformer), torch.sigmoid(x_0)) # works only with BCE
+                    loss_goal_net = self.loss_g(out_goal_transformer, x_0)
                     loss = loss_goal_net
                     torch.save(self.goal_net.state_dict(), './pretrained_models/goal_transformer.pt')
 
@@ -464,7 +466,7 @@ class DiffusionTraj(Module):
                     pretrain=True,
                     betas=False
                     )
-                out_goal_transformer = self.goal_net(history.to(context.device), goal_data['goal_point'].detach())
+                out_goal_transformer = self.goal_net(history.to(context.device), future.to(context.device), goal_data)
                 tr = out_goal_transformer
                 traj_list.append(tr)
             return None, torch.stack(traj_list)
@@ -534,7 +536,13 @@ class DiffusionTraj(Module):
                     If using goal, give the predicted goal point and the history to the second transformer, then average the
                     trajectories from the two networks.
                     """
-                    out_goal_transformer = self.saved_model(history.to(context.device).detach(), goal_data['goal_point'].detach())
+                    # out_goal_transformer = self.saved_model(history.to(context.device).detach(), goal_data['goal_point'].detach())
+                    out_goal_transformer = self.goal_net(
+                        history.to(context.device).detach(),
+                        future.to(context.device).detach(),
+                        goal_data
+                        )
+                    #iftest true
                 else:
                     out_goal_transformer = 0
 
