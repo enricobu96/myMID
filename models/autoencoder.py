@@ -96,11 +96,14 @@ class AutoEncoder(Module):
             )
         
         if self.config.pretrain_transformer:
+            goal_trajs = dynamics.integrate_samples(goal_trajs)
             return goal_trajs.cpu().detach().numpy()
             
         predicted_y_pos = dynamics.integrate_samples(predicted_y_vel) \
             if not self.config.pretrain_transformer \
             else predicted_y_vel
+
+        goal_trajs = dynamics.integrate_samples(goal_trajs)
 
         if self.config.use_goal and goal_trajs is not None:
             predicted_y_pos = (predicted_y_pos + goal_trajs) / 2

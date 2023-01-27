@@ -363,7 +363,7 @@ class DiffusionTraj(Module):
             beta=beta,
             context=context,
             goal=goal if self.use_goal else None,
-            pretrain=self.pretrain_transformer
+            pretrain=self.pretrain_transformer if self.use_goal else False
             )
 
         if self.loss_type == 'hybrid':
@@ -453,7 +453,7 @@ class DiffusionTraj(Module):
                transformer, i.e. giving it history and gt goal it should give us a realistic future
             2. Feed history and gt goal to the second transformer. We should return the predicted future
         """
-        if self.pretrain_transformer:
+        if self.use_goal and self.pretrain_transformer:
             for i in range(sample):
                 batch_size = context.size(0)
                 out, goal_data = self.net(
@@ -466,9 +466,8 @@ class DiffusionTraj(Module):
                     pretrain=True,
                     betas=False
                     )
-                out_goal_transformer = self.goal_net(history.to(context.device), future.to(context.device), goal_data)
-                tr = out_goal_transformer
-                traj_list.append(tr)
+                out_goal_transformer = self.goal_net(history.to(context.device), future.to(context.device), goal_data, num_samples=1, if_test=True)
+                traj_list.append(out_goal_transformer)
             return None, torch.stack(traj_list)
 
         for i in range(sample):
@@ -548,7 +547,7 @@ class DiffusionTraj(Module):
 
                 traj_list.append(tr)
                 trans_traj_list.append(out_goal_transformer)
-        return torch.stack(traj_list), torch.stack(trans_traj_list)
+        return torch.stack(traj_list), torch.stack(trans_traj_list) if self.use_goal else 0
     
     """
     Functions used to compute the vlb loss for learning variances

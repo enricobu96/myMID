@@ -44,7 +44,10 @@ class TransformerGoalSAR(nn.Module):
             self.embedding_size, self.output_size)
 
     def forward(self, history, future, goal, num_samples=1, if_test=False):
-        x_0_pos = future[:, :, :2] # (B, 12, 2)
+        x_0_pos = future # (B, 12, 2)
+
+        # integrate x_0_pos -> now you have the future positions
+        x_0_pos = torch.cumsum(x_0_pos, dim=0)
         history_pos = history[:, :, :2] # (B, 8, 2)
         obs_length = history_pos.shape[1]
         seq_length = future.shape[1]
@@ -144,6 +147,8 @@ class TransformerGoalSAR(nn.Module):
         # stack predictions
         all_outputs = torch.stack(all_outputs)
         futures = all_outputs.squeeze(0).permute(1, 0, 2)[:, obs_length:, :]
-        return futures
 
-    
+        # copy x_0_pos into futures
+        # futures = x_0_pos.clone().detach().requires_grad_(True).to(history.device)
+
+        return futures
