@@ -492,7 +492,8 @@ class DiffusionTraj(Module):
                     out_goal_transformer = self.saved_model(
                         history.to(context.device).detach(),
                         future.to(context.device).detach(),
-                        goal_data
+                        goal_data,
+                        if_test=True
                         )
                     #iftest true
                 else:
