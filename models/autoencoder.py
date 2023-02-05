@@ -105,7 +105,7 @@ class AutoEncoder(Module):
         goal_trajs = dynamics.integrate_samples(goal_trajs)
 
         if self.config.use_goal and goal_trajs is not None:
-            predicted_y_pos = (predicted_y_pos + goal_trajs) / 2 # TODO change this with linear layer
+            predicted_y_pos = (predicted_y_pos + 0.5*goal_trajs) / 1.5 # TODO change this with linear layer
         return predicted_y_pos.cpu().detach().numpy()
 
     def get_loss(self, batch, node_type):
