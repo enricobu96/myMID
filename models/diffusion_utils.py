@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 from copy import deepcopy
+import math
 
 def _extract_into_tensor(arr, timesteps, broadcast_shape):
     """
@@ -93,3 +94,71 @@ def approx_standard_normal_cdf(x):
     standard normal.
     """
     return 0.5 * (1.0 + torch.tanh(np.sqrt(2.0 / np.pi) * (x + 0.044715 * torch.pow(x, 3))))
+
+"""
+NOISE SCHEDULE FUNCTIONS
+"""
+def two_fifth_pi_cos_squared(cosine_s, num_steps):
+    betas = []
+    f0 = math.cos(cosine_s/(1+cosine_s) * (2*math.pi/5)) ** 2
+    for i in range(1, num_steps+1):
+        tT = i/num_steps
+        ft = math.cos((tT+cosine_s)/(1+cosine_s) * (2*math.pi/5)) ** 2
+        alphat = ft/f0
+        tTm1 = (i-1)/num_steps
+        ftm1 = math.cos((tTm1+cosine_s)/(1+cosine_s) * (2*math.pi/5)) ** 2
+        alphatm1 = ftm1/f0
+        betas.append(min(1-(alphat/alphatm1), 0.999))
+    betas = torch.Tensor(betas)
+    return betas
+
+def piecewise_cos_inv(cosine_s, num_steps):
+    betas = [0]
+    a = 2
+    for i in range(1, num_steps+1):
+        c_prev = math.cos(((betas[i-1]/num_steps + cosine_s)/(1+cosine_s))*math.pi/a)
+        acos = np.clip((1-i)*c_prev, -1, 1)
+        betas.append((math.acos(acos)*(a/math.pi)*(1+cosine_s) - cosine_s)*num_steps)
+    betas = torch.Tensor(betas)
+    return betas
+
+def clipped_two_fifth(cosine_s, num_steps):
+    betas = []
+    clips = []
+    for i in range(-num_steps//2, num_steps//2):
+        f = (1/(-np.sign(i)*(num_steps//2)))*i+1
+        clips.append(f/10)
+    clips = np.nan_to_num(clips, nan=1)
+    f0 = math.cos(cosine_s/(1+cosine_s) * (2*math.pi/5)) ** 2
+    for i in range(1, num_steps+1):
+        tT = i/num_steps
+        ft = math.cos((tT+cosine_s)/(1+cosine_s) * (2*math.pi/5)) ** 2
+        alphat = ft/f0
+        tTm1 = (i-1)/num_steps
+        ftm1 = math.cos((tTm1+cosine_s)/(1+cosine_s) * (2*math.pi/5)) ** 2
+        alphatm1 = ftm1/f0
+        betas.append(min(1-(alphat/alphatm1)+clips[i-1], 0.999))
+    betas = torch.Tensor(betas)
+    return betas
+
+def sigmoid(cosine_s, num_steps):
+    lambd = 6
+    eps = 0.05
+    norm = 10
+    s = lambda x : 1/(1+math.exp(-lambd*(x-eps)))
+    betas = []
+    for i in range(-num_steps//2, num_steps//2):
+        betas.append(s(i/(num_steps))/norm)
+    betas = torch.Tensor(betas)
+    return betas
+
+def sigmoid_2(cosine_s, num_steps):
+    lambd = 16
+    eps = .7
+    norm = 16
+    s = lambda x : 1/(1+math.exp(-lambd*(x-eps)))
+    betas = []
+    for i in range(-num_steps//2, num_steps//2):
+        betas.append(s(i/(num_steps))/norm)
+    betas = torch.Tensor(betas)
+    return betas
