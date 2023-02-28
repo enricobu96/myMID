@@ -3,8 +3,9 @@ from torch.nn import Module
 import torch.nn as nn
 from .encoders.trajectron import Trajectron
 from .encoders import dynamics as dynamic_module
+from .goal.sar import TransformerGoalSAR
 import models.diffusion as diffusion
-from models.diffusion import DiffusionTraj,VarianceSchedule,TransformerGoal
+from models.diffusion import DiffusionTraj,VarianceSchedule
 import pdb
 import os.path as osp
 
@@ -31,12 +32,11 @@ class AutoEncoder(Module):
         self.encoder = encoder
         self.diffnet = getattr(diffusion, config.diffnet)
 
-        saved_model = None
+        saved_model = TransformerGoalSAR()
         if not self.config.pretrain_transformer and \
             self.config.use_goal and \
                 osp.exists('./pretrained_models/goal_transformer.pt'):
 
-            saved_model = TransformerGoal()
             saved_model.load_state_dict(torch.load('./pretrained_models/goal_transformer.pt'))
 
         self.diffusion = DiffusionTraj(
@@ -95,14 +95,17 @@ class AutoEncoder(Module):
             )
         
         if self.config.pretrain_transformer:
+            goal_trajs = dynamics.integrate_samples(goal_trajs)
             return goal_trajs.cpu().detach().numpy()
             
         predicted_y_pos = dynamics.integrate_samples(predicted_y_vel) \
             if not self.config.pretrain_transformer \
             else predicted_y_vel
 
+        goal_trajs = dynamics.integrate_samples(goal_trajs)
+
         if self.config.use_goal and goal_trajs is not None:
-            predicted_y_pos = (predicted_y_pos + goal_trajs) / 2
+            predicted_y_pos = (predicted_y_pos + 0.5*goal_trajs) / 1.5 # TODO change this with linear layer
         return predicted_y_pos.cpu().detach().numpy()
 
     def get_loss(self, batch, node_type):
